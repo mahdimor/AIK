@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import write_json
+from common import read_json, write_json
 from compare_runs import STATUSES, compare
 from render_review import render
 from validate_case import validate
@@ -20,12 +20,19 @@ def run(case_dir: str | Path) -> tuple[Path, Path, dict]:
     if errors:
         raise ValueError("; ".join(errors))
 
-    result = compare(directory / "test_cases.jsonl", directory / "baseline.jsonl", directory / "candidate.jsonl")
+    baseline = directory / "baseline.evaluated.jsonl"
+    candidate = directory / "candidate.evaluated.jsonl"
+    if not baseline.exists() or not baseline.stat().st_size:
+        baseline = directory / "baseline.jsonl"
+    if not candidate.exists() or not candidate.stat().st_size:
+        candidate = directory / "candidate.jsonl"
+    suite = read_json(directory / "evaluation.json") if (directory / "evaluation.json").exists() else None
+    result = compare(directory / "test_cases.jsonl", baseline, candidate, suite)
     # Keep generated artifacts reproducible and portable across machines.
     result["inputs"] = {
         "test_cases": "test_cases.jsonl",
-        "baseline": "baseline.jsonl",
-        "candidate": "candidate.jsonl",
+        "baseline": baseline.name,
+        "candidate": candidate.name,
     }
     comparison_path = write_json(directory / "comparison.json", result)
     review_path = render(comparison_path, directory / "case.yaml", directory / "review.html")

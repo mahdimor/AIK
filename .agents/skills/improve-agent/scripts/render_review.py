@@ -45,12 +45,13 @@ def _pane(title: str, result: dict[str, Any] | None) -> str:
     output = html.escape(str(result.get("output", "")))
     agents = html.escape(" → ".join(str(item) for item in result.get("agents", [])) or "Unknown")
     tools = html.escape(_tools(result))
-    passed = "PASS" if result.get("passed") is True else "FAIL"
+    passed = "PASS" if result.get("passed") is True else ("FAIL" if result.get("passed") is False else "MANUAL REVIEW")
     details = {
         "scores": result.get("scores", {}),
         "contracts": result.get("contracts", {}),
         "execution": result.get("execution", {}),
         "error": result.get("error"),
+        "evaluations": result.get("evaluations", []),
     }
     raw_details = html.escape(json.dumps(details, ensure_ascii=False, indent=2))
     return (
@@ -60,7 +61,16 @@ def _pane(title: str, result: dict[str, Any] | None) -> str:
     )
 
 
-def _recommend(summary: dict[str, int]) -> tuple[str, str]:
+def _recommend(summary: dict[str, int], acceptance: dict[str, Any] | None = None) -> tuple[str, str]:
+    if acceptance:
+        recommendation = acceptance.get("recommendation")
+        reasons = "; ".join(str(item) for item in acceptance.get("reasons", []))
+        if recommendation == "rejected":
+            return "REJECTED BY POLICY", reasons
+        if recommendation == "manual_review":
+            return "MANUAL REVIEW REQUIRED", reasons
+        if recommendation == "eligible":
+            return "ELIGIBLE FOR HUMAN APPROVAL", reasons
     if summary.get("regressed", 0):
         return "REJECT OR FIX", "At least one behavior regressed. Review and correct every regression before acceptance."
     if summary.get("not_comparable", 0):
@@ -74,7 +84,8 @@ def render(comparison_path: str | Path, case_yaml_path: str | Path, output_path:
     comparison = json.loads(Path(comparison_path).read_text(encoding="utf-8"))
     summary = comparison["summary"]
     case = _simple_yaml_values(Path(case_yaml_path))
-    recommendation, reason = _recommend(summary)
+    acceptance = comparison.get("acceptance")
+    recommendation, reason = _recommend(summary, acceptance)
     css_path = Path(__file__).resolve().parent.parent / "assets" / "review.css"
     css = css_path.read_text(encoding="utf-8")
 
@@ -86,12 +97,13 @@ def render(comparison_path: str | Path, case_yaml_path: str | Path, output_path:
         deltas = item.get("score_deltas", {})
         delta_text = ", ".join(f"{key}: {value:+g}" for key, value in deltas.items()) or "No comparable numeric score delta"
         tags = ", ".join(str(tag) for tag in item.get("tags", [])) or "untagged"
+        risk = str(item.get("risk", "medium"))
         sections.append(
             '<section class="case">'
             f'<div class="case-head"><span class="badge {status}">{STATUS_LABELS[status]}</span>'
             f'<div><h3>{html.escape(item["case_id"])}</h3><div class="sub">{html.escape(item["description"])}</div></div></div>'
             f'<div class="case-body"><div class="grid">{_pane("Baseline", item.get("baseline"))}{_pane("Candidate", item.get("candidate"))}</div>'
-            f'<div class="meta">Tags: {html.escape(tags)}<br><span class="delta">Score deltas: {html.escape(delta_text)}</span></div>{warnings}</div></section>'
+            f'<div class="meta">Risk: {html.escape(risk)} · Tags: {html.escape(tags)}<br><span class="delta">Score deltas: {html.escape(delta_text)}</span></div>{warnings}</div></section>'
         )
 
     cards = "".join(

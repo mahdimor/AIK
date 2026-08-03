@@ -4,12 +4,32 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 from typing import Any, Iterable
 
 
 class DataError(ValueError):
     """Raised when an AIK artifact is invalid."""
+
+
+def read_json(path: str | Path) -> dict[str, Any]:
+    file_path = Path(path)
+    if not file_path.exists():
+        raise DataError(f"File not found: {file_path}")
+    try:
+        value = json.loads(file_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise DataError(f"Invalid JSON in {file_path}: {exc.msg}") from exc
+    if not isinstance(value, dict):
+        raise DataError(f"Expected an object in {file_path}")
+    return value
+
+
+def fingerprint(value: Any) -> str:
+    """Return a stable content fingerprint for JSON-compatible data."""
+    canonical = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def read_jsonl(path: str | Path, id_field: str) -> list[dict[str, Any]]:

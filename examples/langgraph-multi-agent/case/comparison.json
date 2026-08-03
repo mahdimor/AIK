@@ -1,10 +1,10 @@
 {
   "format_version": "1.0",
-  "generated_at": "2026-08-03T22:02:36.989424+00:00",
+  "generated_at": "2026-08-03T22:47:02.428685+00:00",
   "inputs": {
     "test_cases": "test_cases.jsonl",
-    "baseline": "baseline.jsonl",
-    "candidate": "candidate.jsonl"
+    "baseline": "baseline.evaluated.jsonl",
+    "candidate": "candidate.evaluated.jsonl"
   },
   "summary": {
     "improved": 1,
@@ -12,6 +12,28 @@
     "unchanged": 3,
     "not_comparable": 0,
     "total": 4
+  },
+  "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+  "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+  "compatibility_warnings": [],
+  "acceptance": {
+    "recommendation": "eligible",
+    "reasons": [
+      "All configured acceptance gates passed"
+    ],
+    "metrics": {
+      "baseline_pass_rate": 0.75,
+      "candidate_pass_rate": 1.0,
+      "delta": 0.25
+    },
+    "policy": {
+      "reject_on_evaluator_error": true,
+      "no_regression_at_or_above_risk": "high",
+      "critical_cases_must_pass": true,
+      "maximum_regressions": 0,
+      "minimum_candidate_pass_rate": 1.0,
+      "minimum_delta": 0.0
+    }
   },
   "items": [
     {
@@ -21,10 +43,13 @@
         "billing",
         "routing"
       ],
+      "risk": "medium",
       "status": "unchanged",
       "warnings": [],
       "score_deltas": {
-        "routing_accuracy": 0.0
+        "execution-ok": 0.0,
+        "forbidden-agents": 0.0,
+        "required-agents": 0.0
       },
       "contract_changes": {},
       "baseline": {
@@ -34,11 +59,72 @@
         ],
         "case_id": "billing-only",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1975,
+          "duration_ms": 3251,
           "exit_code": 0
         },
         "metadata": {
@@ -48,7 +134,9 @@
         "output": "Supervisor summary:\nBilling specialist handled: I was charged twice and need a refund.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
         "tool_calls": [
           {
@@ -57,7 +145,8 @@
             },
             "name": "consult_billing_agent"
           }
-        ]
+        ],
+        "verdict": "pass"
       },
       "candidate": {
         "agents": [
@@ -66,11 +155,72 @@
         ],
         "case_id": "billing-only",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1541,
+          "duration_ms": 3321,
           "exit_code": 0
         },
         "metadata": {
@@ -80,7 +230,9 @@
         "output": "Supervisor summary:\nBilling specialist handled: I was charged twice and need a refund.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
         "tool_calls": [
           {
@@ -89,7 +241,8 @@
             },
             "name": "consult_billing_agent"
           }
-        ]
+        ],
+        "verdict": "pass"
       }
     },
     {
@@ -99,10 +252,13 @@
         "technical",
         "routing"
       ],
+      "risk": "medium",
       "status": "unchanged",
       "warnings": [],
       "score_deltas": {
-        "routing_accuracy": 0.0
+        "execution-ok": 0.0,
+        "forbidden-agents": 0.0,
+        "required-agents": 0.0
       },
       "contract_changes": {},
       "baseline": {
@@ -112,11 +268,72 @@
         ],
         "case_id": "technical-only",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 2164,
+          "duration_ms": 3335,
           "exit_code": 0
         },
         "metadata": {
@@ -126,7 +343,9 @@
         "output": "Supervisor summary:\nTechnical specialist handled: The app crashes whenever I try to login.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
         "tool_calls": [
           {
@@ -135,7 +354,8 @@
             },
             "name": "consult_technical_agent"
           }
-        ]
+        ],
+        "verdict": "pass"
       },
       "candidate": {
         "agents": [
@@ -144,11 +364,72 @@
         ],
         "case_id": "technical-only",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1543,
+          "duration_ms": 4209,
           "exit_code": 0
         },
         "metadata": {
@@ -158,7 +439,9 @@
         "output": "Supervisor summary:\nTechnical specialist handled: The app crashes whenever I try to login.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
         "tool_calls": [
           {
@@ -167,7 +450,8 @@
             },
             "name": "consult_technical_agent"
           }
-        ]
+        ],
+        "verdict": "pass"
       }
     },
     {
@@ -179,13 +463,16 @@
         "multi-agent",
         "routing"
       ],
+      "risk": "high",
       "status": "improved",
       "warnings": [],
       "score_deltas": {
-        "routing_accuracy": 1.0
+        "execution-ok": 0.0,
+        "forbidden-agents": 0.0,
+        "required-agents": 1.0
       },
       "contract_changes": {
-        "required-agents-called": {
+        "required-agents": {
           "before": "fail",
           "after": "pass"
         }
@@ -197,11 +484,71 @@
         ],
         "case_id": "mixed-request",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "fail"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "fail"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent",
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Required values missing: technical-agent",
+            "score": 0.0,
+            "status": "fail"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [],
+              "observed": [
+                "supervisor",
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1969,
+          "duration_ms": 3640,
           "exit_code": 0
         },
         "metadata": {
@@ -211,7 +558,9 @@
         "output": "Supervisor summary:\nBilling specialist handled: I was charged twice and the app crashes when I open the invoice.",
         "passed": false,
         "scores": {
-          "routing_accuracy": 0.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 0.0
         },
         "tool_calls": [
           {
@@ -220,7 +569,8 @@
             },
             "name": "consult_billing_agent"
           }
-        ]
+        ],
+        "verdict": "fail"
       },
       "candidate": {
         "agents": [
@@ -230,11 +580,73 @@
         ],
         "case_id": "mixed-request",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent",
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor",
+                "billing-agent",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [],
+              "observed": [
+                "supervisor",
+                "billing-agent",
+                "technical-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1523,
+          "duration_ms": 5660,
           "exit_code": 0
         },
         "metadata": {
@@ -244,7 +656,9 @@
         "output": "Supervisor summary:\nBilling specialist handled: I was charged twice and the app crashes when I open the invoice.\nTechnical specialist handled: I was charged twice and the app crashes when I open the invoice.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
         "tool_calls": [
           {
@@ -259,7 +673,8 @@
             },
             "name": "consult_technical_agent"
           }
-        ]
+        ],
+        "verdict": "pass"
       }
     },
     {
@@ -269,10 +684,13 @@
         "routing",
         "negative"
       ],
+      "risk": "low",
       "status": "unchanged",
       "warnings": [],
       "score_deltas": {
-        "routing_accuracy": 0.0
+        "execution-ok": 0.0,
+        "forbidden-agents": 0.0,
+        "required-agents": 0.0
       },
       "contract_changes": {},
       "baseline": {
@@ -281,11 +699,69 @@
         ],
         "case_id": "general-greeting",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [],
+              "observed": [
+                "supervisor"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent",
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1737,
+          "duration_ms": 3714,
           "exit_code": 0
         },
         "metadata": {
@@ -295,9 +771,12 @@
         "output": "This request needs no specialist.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
-        "tool_calls": []
+        "tool_calls": [],
+        "verdict": "pass"
       },
       "candidate": {
         "agents": [
@@ -305,11 +784,69 @@
         ],
         "case_id": "general-greeting",
         "contracts": {
-          "forbidden-agents-avoided": "pass",
-          "required-agents-called": "pass"
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "pass"
         },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:57c10e156508c48d3cfc3fd68c50032f529ba9409564b29a7633ecb673a4ac85",
+          "evaluator_fingerprint": "sha256:f61fe53ee98918d6d7909312752d892f3f0100425fa6b2e442b48127bf9790eb",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [],
+              "observed": [
+                "supervisor"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent",
+                "technical-agent"
+              ],
+              "observed": [
+                "supervisor"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "task-completion",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "semantic",
+            "reason": "Optional semantic evaluator skipped; no judge command supplied",
+            "status": "not_applicable"
+          }
+        ],
         "execution": {
-          "duration_ms": 1519,
+          "duration_ms": 4424,
           "exit_code": 0
         },
         "metadata": {
@@ -319,9 +856,12 @@
         "output": "This request needs no specialist.",
         "passed": true,
         "scores": {
-          "routing_accuracy": 1.0
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0,
+          "required-agents": 1.0
         },
-        "tool_calls": []
+        "tool_calls": [],
+        "verdict": "pass"
       }
     }
   ]

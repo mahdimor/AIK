@@ -1,6 +1,6 @@
 {
   "format_version": "1.0",
-  "generated_at": "2026-08-03T21:24:46.483751+00:00",
+  "generated_at": "2026-08-03T22:44:14.954577+00:00",
   "inputs": {
     "test_cases": "test_cases.jsonl",
     "baseline": "baseline.jsonl",
@@ -13,6 +13,21 @@
     "not_comparable": 0,
     "total": 3
   },
+  "dataset_fingerprint": "sha256:69b828b10b63025784a0b4361518ef9c5effc4f59519c58ae627414402b3b704",
+  "evaluator_fingerprint": null,
+  "compatibility_warnings": [],
+  "acceptance": {
+    "recommendation": "rejected",
+    "reasons": [
+      "Detected 1 regressions; maximum is 0"
+    ],
+    "metrics": {
+      "baseline_pass_rate": 0.6666666666666666,
+      "candidate_pass_rate": 0.6666666666666666,
+      "delta": 0.0
+    },
+    "policy": {}
+  },
   "items": [
     {
       "case_id": "confirm-before-action",
@@ -22,6 +37,7 @@
         "multi-turn",
         "side-effect"
       ],
+      "risk": "medium",
       "status": "improved",
       "warnings": [],
       "score_deltas": {
@@ -93,6 +109,7 @@
         "courtesy",
         "regression-guard"
       ],
+      "risk": "medium",
       "status": "regressed",
       "warnings": [],
       "score_deltas": {
@@ -148,6 +165,7 @@
         "side-effect",
         "regression-guard"
       ],
+      "risk": "medium",
       "status": "unchanged",
       "warnings": [],
       "score_deltas": {

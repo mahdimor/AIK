@@ -24,6 +24,12 @@ export OPENAI_API_KEY="..."
 python examples/langgraph-multi-agent/run_demo.py --mode openai
 ```
 
+Run the deterministic mock agent while using OpenAI only as the semantic task-completion judge:
+
+```bash
+python examples/langgraph-multi-agent/run_demo.py --mode mock --judge openai
+```
+
 PowerShell:
 
 ```powershell
@@ -31,9 +37,18 @@ $env:OPENAI_API_KEY="..."
 python examples/langgraph-multi-agent/run_demo.py --mode openai
 ```
 
-Override the model with `--model` or `AIK_DEMO_MODEL`. The default is `gpt-5.4-mini`.
+Override the model with `--model` or `AIK_DEMO_MODEL`. The default is `gpt-5.6-luna` for a cost-sensitive demo.
 
-The demo runs the same four cases against an intentionally flawed baseline and a corrected candidate, then generates `case/comparison.json` and `case/review.html`.
+The demo runs the same four governed cases against an intentionally flawed baseline and a corrected candidate. The runner records raw LangGraph evidence; AIK evaluates routing independently, optionally applies the LLM rubric, enforces the acceptance policy, and generates `case/comparison.json` and `case/review.html`.
+
+Expected offline result:
+
+```text
+baseline pass rate: 0.75
+candidate pass rate: 1.00
+delta: +0.25
+recommendation: eligible
+```
 
 ## Architecture source
 

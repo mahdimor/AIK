@@ -11,10 +11,10 @@ Recommended contract families:
 - Information: required facts preserved, forbidden internal data absent.
 - Reliability: no runtime error, timeout, or malformed structured output.
 
-Represent observed results in each run:
+Define expectations in the case and let `aik evaluate` infer contract outcomes from raw evidence:
 
 ```json
-"contracts": {"confirmation-before-action": "pass", "single-side-effect": "fail"}
+"expected": {"required_tools": ["confirm"], "max_tool_calls": 1}
 ```
 
-The MVP compares recorded contract outcomes; it does not infer arbitrary contracts from raw traces.
+Use an external evaluator for contracts that require domain or semantic judgment.

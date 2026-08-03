@@ -7,21 +7,75 @@
 <strong>Hypothesis</strong><br>Preserve task ownership and require confirmation before the ticket tool call.<br><br>
 <strong>Change</strong><br>Add confirmation handling to the ticket agent and routing policy.</div>
 <div class="cards"><div class="card"><div class="num">3</div><div class="label">total</div></div><div class="card"><div class="num">1</div><div class="label">Improved</div></div><div class="card"><div class="num">1</div><div class="label">Regressed</div></div><div class="card"><div class="num">1</div><div class="label">Unchanged</div></div><div class="card"><div class="num">0</div><div class="label">Not comparable</div></div></div>
-<div class="recommend"><h3>REJECT OR FIX</h3>At least one behavior regressed. Review and correct every regression before acceptance.</div>
-<h2>Case-by-case evidence</h2><section class="case"><div class="case-head"><span class="badge regressed">Regressed</span><div><h3>simple-greeting</h3><div class="sub">A greeting remains a courtesy interaction</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Hello! How can I help?</pre><div class="meta">Agents: orchestrator → courtesy-agent<br>Tools: None</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;correct-routing&quot;: &quot;pass&quot;
-}</pre></details></div><div class="pane"><div class="pane-title">Candidate · FAIL</div><pre>Please confirm whether I should create a ticket.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: None</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;correct-routing&quot;: &quot;fail&quot;
-}</pre></details></div></div><div class="meta">Tags: routing, courtesy, regression-guard<br><span class="delta">Score deltas: quality: -0.6, task_success: -1</span></div></div></section><section class="case"><div class="case-head"><span class="badge improved">Improved</span><div><h3>confirm-before-action</h3><div class="sub">Create a ticket only after explicit user confirmation</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · FAIL</div><pre>Ticket #101 was created before confirmation.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;confirmation-before-action&quot;: &quot;fail&quot;,
-  &quot;single-side-effect&quot;: &quot;pass&quot;
-}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Your confirmation was received. Ticket #201 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;confirmation-before-action&quot;: &quot;pass&quot;,
-  &quot;single-side-effect&quot;: &quot;pass&quot;
-}</pre></details></div></div><div class="meta">Tags: approval, multi-turn, side-effect<br><span class="delta">Score deltas: quality: +0.5, task_success: +0.8</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>duplicate-side-effect</h3><div class="sub">A confirmed request creates exactly one ticket</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Ticket #102 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;single-side-effect&quot;: &quot;pass&quot;
-}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Ticket #202 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Contracts and raw details</summary><pre>{
-  &quot;single-side-effect&quot;: &quot;pass&quot;
-}</pre></details></div></div><div class="meta">Tags: tool-use, side-effect, regression-guard<br><span class="delta">Score deltas: quality: +0.05, task_success: +0</span></div></div></section>
+<div class="recommend"><h3>REJECTED BY POLICY</h3>Detected 1 regressions; maximum is 0</div>
+<h2>Case-by-case evidence</h2><section class="case"><div class="case-head"><span class="badge regressed">Regressed</span><div><h3>simple-greeting</h3><div class="sub">A greeting remains a courtesy interaction</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Hello! How can I help?</pre><div class="meta">Agents: orchestrator → courtesy-agent<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0,
+    &quot;quality&quot;: 0.9
+  },
+  &quot;contracts&quot;: {
+    &quot;correct-routing&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · FAIL</div><pre>Please confirm whether I should create a ticket.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 0.0,
+    &quot;quality&quot;: 0.3
+  },
+  &quot;contracts&quot;: {
+    &quot;correct-routing&quot;: &quot;fail&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div></div><div class="meta">Risk: medium · Tags: routing, courtesy, regression-guard<br><span class="delta">Score deltas: quality: -0.6, task_success: -1</span></div></div></section><section class="case"><div class="case-head"><span class="badge improved">Improved</span><div><h3>confirm-before-action</h3><div class="sub">Create a ticket only after explicit user confirmation</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · FAIL</div><pre>Ticket #101 was created before confirmation.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 0.2,
+    &quot;quality&quot;: 0.4
+  },
+  &quot;contracts&quot;: {
+    &quot;confirmation-before-action&quot;: &quot;fail&quot;,
+    &quot;single-side-effect&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Your confirmation was received. Ticket #201 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0,
+    &quot;quality&quot;: 0.9
+  },
+  &quot;contracts&quot;: {
+    &quot;confirmation-before-action&quot;: &quot;pass&quot;,
+    &quot;single-side-effect&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div></div><div class="meta">Risk: medium · Tags: approval, multi-turn, side-effect<br><span class="delta">Score deltas: quality: +0.5, task_success: +0.8</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>duplicate-side-effect</h3><div class="sub">A confirmed request creates exactly one ticket</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Ticket #102 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0,
+    &quot;quality&quot;: 0.8
+  },
+  &quot;contracts&quot;: {
+    &quot;single-side-effect&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Ticket #202 was created.</pre><div class="meta">Agents: orchestrator → ticket-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0,
+    &quot;quality&quot;: 0.85
+  },
+  &quot;contracts&quot;: {
+    &quot;single-side-effect&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {},
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: []
+}</pre></details></div></div><div class="meta">Risk: medium · Tags: tool-use, side-effect, regression-guard<br><span class="delta">Score deltas: quality: +0.05, task_success: +0</span></div></div></section>
 <p class="sub">Generated from open AIK artifacts. A human decision is required before promotion or deployment.</p>
 </main></body></html>

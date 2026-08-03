@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapt a LangGraph-compatible runnable and evaluator to the AIK runner protocol."""
+"""Adapt a LangGraph-compatible runnable to the AIK raw runner protocol."""
 
 from __future__ import annotations
 
@@ -39,7 +39,8 @@ def build_runnable(target: Any, stage: str) -> Any:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run one AIK case through a LangGraph-compatible object")
     parser.add_argument("--graph", required=True, help="Runnable or factory as module:attribute")
-    parser.add_argument("--evaluator", required=True, help="Evaluator function as module:attribute")
+    parser.add_argument("--transform", help="Optional result transform as module:attribute")
+    parser.add_argument("--evaluator", help="Deprecated alias for --transform")
     args = parser.parse_args()
 
     sys.path.insert(0, str(Path.cwd()))
@@ -47,19 +48,20 @@ def main() -> int:
     case = request["case"]
     stage = request["stage"]
     graph_target = load_target(args.graph)
-    evaluator = load_target(args.evaluator)
+    transform_reference = args.transform or args.evaluator
+    transform = load_target(transform_reference) if transform_reference else None
     runnable = build_runnable(graph_target, stage)
 
     captured = io.StringIO()
     with contextlib.redirect_stdout(captured):
         result = runnable.invoke(case["input"])
-        evaluation = evaluator(case=case, result=result, stage=stage)
+        evidence = transform(case=case, result=result, stage=stage) if transform else result
     diagnostics = captured.getvalue()
     if diagnostics:
         print(diagnostics, file=sys.stderr, end="")
-    if not isinstance(evaluation, dict) or not isinstance(evaluation.get("passed"), bool):
-        raise TypeError("Evaluator must return an object with boolean 'passed'")
-    json.dump(evaluation, sys.stdout, ensure_ascii=False)
+    if not isinstance(evidence, dict):
+        raise TypeError("Graph result transform must return an object")
+    json.dump(evidence, sys.stdout, ensure_ascii=False)
     return 0
 
 

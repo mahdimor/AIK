@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -17,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
 
 from common import DataError  # noqa: E402
 from execute_cases import execute  # noqa: E402
+from evaluate_results import evaluate  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
@@ -63,6 +64,20 @@ def build_parser() -> argparse.ArgumentParser:
     run_mode.add_argument("--overwrite", action="store_true")
     run_parser.add_argument("--cwd")
 
+    evaluate_parser = commands.add_parser(
+        "evaluate",
+        help="Evaluate raw evidence with the configured evaluator suite",
+        epilog="Optionally place an external LLM judge command after --",
+    )
+    evaluate_parser.add_argument("case_dir")
+    evaluate_parser.add_argument("--stage", required=True, choices=("baseline", "candidate"))
+    evaluate_parser.add_argument("--timeout", type=float, default=60)
+    evaluate_parser.add_argument("--id", action="append", dest="ids")
+    evaluate_parser.add_argument("--tag", action="append", dest="tags")
+    evaluate_mode = evaluate_parser.add_mutually_exclusive_group()
+    evaluate_mode.add_argument("--resume", action="store_true")
+    evaluate_mode.add_argument("--overwrite", action="store_true")
+
     review_parser = commands.add_parser("review", help="Compare runs and build the HTML review")
     review_parser.add_argument("case_dir")
 
@@ -89,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     raw_arguments = list(argv) if argv is not None else sys.argv[1:]
     runner_command: list[str] = []
-    if raw_arguments[:1] == ["run"] and "--" in raw_arguments:
+    if raw_arguments[:1] in (["run"], ["evaluate"]) and "--" in raw_arguments:
         separator = raw_arguments.index("--")
         runner_command = raw_arguments[separator + 1 :]
         raw_arguments = raw_arguments[:separator]
@@ -125,6 +140,21 @@ def main(argv: list[str] | None = None) -> int:
             print(" ".join(f"{key}={summary[key]}" for key in ("executed", "skipped", "execution_errors")))
             print(f"results={summary['destination']}")
             return 1 if summary["execution_errors"] else 0
+
+        if args.command == "evaluate":
+            summary = evaluate(
+                args.case_dir,
+                args.stage,
+                runner_command,
+                timeout_seconds=args.timeout,
+                selected_ids=set(args.ids) if args.ids else None,
+                selected_tags=set(args.tags) if args.tags else None,
+                resume=args.resume,
+                overwrite=args.overwrite,
+            )
+            print(" ".join(f"{key}={summary[key]}" for key in ("passed", "failed", "manual_review", "evaluator_errors")))
+            print(f"results={summary['destination']}")
+            return 1 if summary["evaluator_errors"] else 0
 
         if args.command in {"review", "demo"}:
             case_dir = args.case_dir

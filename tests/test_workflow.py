@@ -15,6 +15,7 @@ sys.path.insert(0, str(SCRIPTS))
 from common import read_jsonl, write_json, write_jsonl  # noqa: E402
 from compare_runs import compare  # noqa: E402
 from execute_cases import execute  # noqa: E402
+from evaluate_results import evaluate  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from render_review import render  # noqa: E402
@@ -34,9 +35,9 @@ class WorkflowTests(unittest.TestCase):
         write_jsonl(
             case_dir / "test_cases.jsonl",
             [
-                {"id": "a", "description": "A", "input": {}, "expected": {}, "tags": ["x"]},
-                {"id": "b", "description": "B", "input": {}, "expected": {}, "tags": ["x"]},
-                {"id": "c", "description": "C", "input": {}, "expected": {}, "tags": ["x"]},
+                {"id": "a", "description": "A", "input": {"case": "a"}, "expected": {"goal": "A"}, "tags": ["x"], "risk": "medium", "source": "test", "split": "development", "status": "accepted"},
+                {"id": "b", "description": "B", "input": {"case": "b"}, "expected": {"goal": "B"}, "tags": ["x"], "risk": "medium", "source": "test", "split": "development", "status": "accepted"},
+                {"id": "c", "description": "C", "input": {"case": "c"}, "expected": {"goal": "C"}, "tags": ["x"], "risk": "medium", "source": "test", "split": "regression", "status": "accepted"},
             ],
         )
         write_jsonl(
@@ -69,6 +70,10 @@ class WorkflowTests(unittest.TestCase):
                     "input": {"mode": mode},
                     "expected": {},
                     "tags": ["runner", "even" if index % 2 == 0 else "odd"],
+                    "risk": "low",
+                    "source": "test",
+                    "split": "development",
+                    "status": "accepted",
                 }
                 for index, mode in enumerate(chosen_modes, start=1)
             ],
@@ -108,7 +113,7 @@ class WorkflowTests(unittest.TestCase):
         report = render(comparison, case_dir / "case.yaml", case_dir / "review.html")
         text = report.read_text(encoding="utf-8")
         self.assertIn("Behavioral Change Review", text)
-        self.assertIn("REJECT OR FIX", text)
+        self.assertIn("REJECTED BY POLICY", text)
         self.assertIn("old &lt;unsafe&gt;", text)
         self.assertNotIn("old <unsafe>", text)
 
@@ -162,14 +167,14 @@ class WorkflowTests(unittest.TestCase):
 
         baseline = execute(case_dir, "baseline", runner)
         self.assertEqual(baseline["executed"], 2)
-        self.assertEqual([item["passed"] for item in read_jsonl(case_dir / "baseline.jsonl", "case_id")], [False, False])
+        self.assertEqual([item["passed"] for item in read_jsonl(case_dir / "baseline.raw.jsonl", "case_id")], [False, False])
 
         first = execute(case_dir, "candidate", runner, selected_ids={"run-1"})
         self.assertEqual(first["executed"], 1)
         resumed = execute(case_dir, "candidate", runner, resume=True)
         self.assertEqual(resumed["executed"], 1)
         self.assertEqual(resumed["skipped"], 1)
-        candidate = read_jsonl(case_dir / "candidate.jsonl", "case_id")
+        candidate = read_jsonl(case_dir / "candidate.raw.jsonl", "case_id")
         self.assertEqual([item["case_id"] for item in candidate], ["run-1", "run-2"])
         self.assertTrue(all(item["passed"] for item in candidate))
 
@@ -180,7 +185,7 @@ class WorkflowTests(unittest.TestCase):
         summary = execute(case_dir, "baseline", runner, timeout_seconds=0.5)
 
         self.assertEqual(summary["execution_errors"], 3)
-        records = read_jsonl(case_dir / "baseline.jsonl", "case_id")
+        records = read_jsonl(case_dir / "baseline.raw.jsonl", "case_id")
         self.assertEqual(
             {item["error"]["type"] for item in records},
             {"invalid_json", "runner_exit", "timeout"},
@@ -198,7 +203,7 @@ class WorkflowTests(unittest.TestCase):
         runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
         summary = execute(case_dir, "baseline", runner, selected_tags={"even"})
         self.assertEqual(summary["selected"], 1)
-        records = read_jsonl(case_dir / "baseline.jsonl", "case_id")
+        records = read_jsonl(case_dir / "baseline.raw.jsonl", "case_id")
         self.assertEqual([item["case_id"] for item in records], ["run-2"])
 
     def test_root_cli_executes_runner_after_separator(self) -> None:
@@ -224,11 +229,98 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("executed=1 skipped=0 execution_errors=0", completed.stdout)
 
+    def test_raw_runner_no_longer_requires_passed(self) -> None:
+        case_dir = self._write_execution_case(["raw-only"])
+        runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
+        summary = execute(case_dir, "candidate", runner)
+        self.assertEqual(summary["execution_errors"], 0)
+        raw = read_jsonl(case_dir / "candidate.raw.jsonl", "case_id")[0]
+        self.assertNotIn("passed", raw)
+        self.assertEqual(raw["metadata"]["protocol"], "1.1")
+
+    def test_evaluation_combines_contracts_and_external_semantic_judge(self) -> None:
+        case_dir = initialize("Evaluated Case", self.root / "improvements")
+        write_jsonl(
+            case_dir / "test_cases.jsonl",
+            [{
+                "id": "faq-1", "description": "Answer refund FAQ", "input": {"question": "refund"},
+                "expected": {"required_agents": ["faq-agent"], "rubric": ["Answer the refund question"], "semantic_keywords": ["refund", "30 days"]},
+                "tags": ["faq"], "risk": "high", "source": "known_regression", "split": "regression", "status": "accepted",
+            }],
+        )
+        write_json(
+            case_dir / "evaluation.json",
+            {
+                "format_version": "1.0", "suite_id": "faq", "version": "1.0.0",
+                "evaluators": [
+                    {"id": "agents", "type": "required_agents", "required": True},
+                    {"id": "task-completion", "type": "llm_rubric", "required": True, "threshold": 0.8},
+                ],
+                "acceptance": {"maximum_regressions": 0},
+            },
+        )
+        write_jsonl(case_dir / "candidate.raw.jsonl", [{"case_id": "faq-1", "output": "Refunds are available within 30 days.", "agents": ["faq-agent"], "tool_calls": []}])
+        judge = [sys.executable, str(ROOT / "tests" / "fixtures" / "semantic_judge.py")]
+        summary = evaluate(case_dir, "candidate", judge, overwrite=True)
+        self.assertEqual(summary["passed"], 1)
+        result = read_jsonl(case_dir / "candidate.evaluated.jsonl", "case_id")[0]
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["scores"]["task-completion"], 1.0)
+        self.assertEqual(result["evaluation_metadata"]["dataset_fingerprint"][:7], "sha256:")
+
+    def test_required_semantic_judge_missing_requires_manual_review(self) -> None:
+        case_dir = initialize("Judge Missing", self.root / "improvements")
+        write_jsonl(case_dir / "test_cases.jsonl", [{
+            "id": "x", "description": "X", "input": {"x": 1}, "expected": {"rubric": ["Succeed"]},
+            "tags": ["semantic"], "risk": "medium", "source": "test", "split": "development", "status": "accepted",
+        }])
+        write_json(case_dir / "evaluation.json", {
+            "format_version": "1.0", "suite_id": "judge", "version": "1.0.0",
+            "evaluators": [{"id": "quality", "type": "llm_rubric", "required": True}],
+            "acceptance": {},
+        })
+        write_jsonl(case_dir / "candidate.raw.jsonl", [{"case_id": "x", "output": "Maybe"}])
+        summary = evaluate(case_dir, "candidate", overwrite=True)
+        self.assertEqual(summary["manual_review"], 1)
+        self.assertEqual(summary["evaluator_errors"], 1)
+
+    def test_all_builtin_evaluators_can_gate_one_case(self) -> None:
+        case_dir = initialize("All Builtins", self.root / "improvements")
+        write_jsonl(case_dir / "test_cases.jsonl", [{
+            "id": "all", "description": "All contracts", "input": {"x": 1},
+            "expected": {
+                "required_agents": ["worker"], "forbidden_agents": ["admin"],
+                "required_tools": ["lookup"], "forbidden_tools": ["delete"], "max_tool_calls": 1,
+                "required_tool_arguments": {"lookup": {"id": 7}},
+                "output_contains": ["ok"], "output_not_contains": ["secret"],
+                "output_schema": {"required": ["status"], "properties": {"status": {"type": "string"}}},
+            },
+            "tags": ["contracts"], "risk": "critical", "source": "test", "split": "challenge", "status": "accepted",
+        }])
+        evaluator_types = [
+            "no_execution_error", "required_agents", "forbidden_agents", "required_tools", "forbidden_tools",
+            "max_tool_calls", "required_tool_arguments", "output_contains", "output_not_contains", "json_schema_subset", "runner_verdict",
+        ]
+        write_json(case_dir / "evaluation.json", {
+            "format_version": "1.0", "suite_id": "builtins", "version": "1.0.0",
+            "evaluators": [{"id": kind, "type": kind, "required": True} for kind in evaluator_types],
+            "acceptance": {"critical_cases_must_pass": True},
+        })
+        write_jsonl(case_dir / "candidate.raw.jsonl", [{
+            "case_id": "all", "passed": True, "output": '{"status":"ok"}', "agents": ["worker"],
+            "tool_calls": [{"name": "lookup", "arguments": {"id": 7}}], "error": None,
+        }])
+        summary = evaluate(case_dir, "candidate", overwrite=True)
+        self.assertEqual(summary["passed"], 1)
+        result = read_jsonl(case_dir / "candidate.evaluated.jsonl", "case_id")[0]
+        self.assertEqual({item["status"] for item in result["evaluations"]}, {"pass"})
+        self.assertEqual(len(result["evaluations"]), len(evaluator_types))
+
     def test_langgraph_adapter_loads_factory_and_evaluator(self) -> None:
         case_dir = initialize("Adapter Case", self.root / "improvements")
         write_jsonl(
             case_dir / "test_cases.jsonl",
-            [{"id": "adapter-1", "description": "Adapter", "input": {"value": 2}, "expected": {"value": 4}, "tags": ["adapter"]}],
+            [{"id": "adapter-1", "description": "Adapter", "input": {"value": 2}, "expected": {"value": 4}, "tags": ["adapter"], "risk": "low", "source": "test", "split": "development", "status": "accepted"}],
         )
         adapter = ROOT / ".agents" / "skills" / "improve-agent" / "scripts" / "langgraph_runner.py"
         command = [
@@ -246,7 +338,7 @@ class WorkflowTests(unittest.TestCase):
             runner_cwd=ROOT / "tests" / "fixtures",
         )
         self.assertEqual(summary["execution_errors"], 0)
-        result = read_jsonl(case_dir / "baseline.jsonl", "case_id")[0]
+        result = read_jsonl(case_dir / "baseline.raw.jsonl", "case_id")[0]
         self.assertTrue(result["passed"])
         self.assertEqual(result["metadata"]["stage"], "baseline")
 

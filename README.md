@@ -1,8 +1,8 @@
 # AIK — Agent Improvement Kit
 
-AIK is a small, local-first Agent Skill that turns an AI-agent failure into a reproducible before/after review and a permanent regression test.
+AIK is a small, local-first Agent Skill that turns an AI-agent failure into governed test data, independently evaluated before/after evidence, an explicit acceptance recommendation, and a permanent regression test.
 
-It is not an evaluation platform and does not embed an agent SDK. It can compare existing JSONL evidence or execute project-owned runners through a small JSON-over-stdin/stdout protocol. No cloud account, database, framework SDK, or third-party Python dependency is required by AIK.
+It is not a hosted observability platform and does not embed an agent SDK. The core executes project-owned runners, applies deterministic evaluators, delegates optional semantic judgment through a provider-neutral subprocess protocol, and enforces acceptance gates. No cloud account, database, framework SDK, or third-party Python dependency is required by AIK core.
 
 ## Try it in one command
 
@@ -28,7 +28,7 @@ The example intentionally contains one improvement and one regression, demonstra
    python aik.py init my-agent-failure
    ```
 
-2. Describe the issue in `improvements/my-agent-failure/case.yaml` and add stable cases to `test_cases.jsonl`.
+2. Describe the issue, add governed cases to `test_cases.jsonl`, and define evaluators and acceptance gates in `evaluation.json` before changing the agent.
 
 3. Record the same cases before and after the change. Files can be written by an existing test harness, or generated through any project-owned command:
 
@@ -38,18 +38,32 @@ The example intentionally contains one improvement and one regression, demonstra
    python aik.py run improvements/my-agent-failure --stage candidate -- python path/to/my_runner.py
    ```
 
-   The runner may internally use MCP, an SDK, HTTP, a local model, or a deterministic mock. It also owns the `passed` verdict; AIK does not guess correctness from free-form text. See [the runner protocol](.agents/skills/improve-agent/references/runner-protocol.md).
+   The runner may use MCP, an SDK, HTTP, a local model, or a deterministic mock. It returns raw evidence and does not need to decide `passed`. See [the runner protocol](.agents/skills/improve-agent/references/runner-protocol.md).
 
-4. Validate and generate the review:
+4. Evaluate both stages. Deterministic evaluation needs no external command:
+
+   ```bash
+   python aik.py evaluate improvements/my-agent-failure --stage baseline
+   python aik.py evaluate improvements/my-agent-failure --stage candidate
+   ```
+
+   For semantic rubrics, pass any compatible judge command after `--`. The bundled optional OpenAI judge is one implementation:
+
+   ```bash
+   python aik.py evaluate improvements/my-agent-failure --stage candidate -- \
+     python .agents/skills/improve-agent/scripts/openai_judge.py
+   ```
+
+5. Validate and generate the review:
 
    ```bash
    python aik.py validate improvements/my-agent-failure
    python aik.py review improvements/my-agent-failure
    ```
 
-5. Open `review.html`, inspect every regression, and record the human decision in `decision.yaml`.
+6. Open `review.html`, inspect the policy recommendation and every regression, then record the human decision in `decision.yaml`.
 
-6. After acceptance, preserve improved cases as permanent regression tests:
+7. After acceptance, preserve improved cases as permanent regression tests:
 
    ```bash
    python aik.py promote improvements/my-agent-failure
@@ -85,7 +99,7 @@ python -m pip install -r examples/langgraph-multi-agent/requirements.txt
 python examples/langgraph-multi-agent/run_demo.py --mode mock
 ```
 
-To use OpenAI, set `OPENAI_API_KEY` and replace `--mode mock` with `--mode openai`. See [the demo guide](examples/langgraph-multi-agent/README.md) and [the reusable adapter contract](.agents/skills/improve-agent/references/langgraph-adapter.md).
+To use OpenAI for the agent, set `OPENAI_API_KEY` and replace `--mode mock` with `--mode openai`. To keep the mock agent but evaluate its semantic rubric with OpenAI, add `--judge openai`. See [the demo guide](examples/langgraph-multi-agent/README.md) and [the reusable adapter contract](.agents/skills/improve-agent/references/langgraph-adapter.md).
 
 ## What is tracked
 
@@ -96,7 +110,7 @@ Every test case is classified as:
 - `unchanged`: the pass/fail outcome is unchanged;
 - `not_comparable`: evidence is missing or invalid.
 
-Optional fields can capture numeric scores, tool calls, participating agents, latency, cost, and behavioral contracts. See [the data format](.agents/skills/improve-agent/references/data-format.md).
+Each comparison also contains `eligible`, `rejected`, or `manual_review`, policy reasons, baseline and candidate pass rates, delta, and dataset/evaluator fingerprints. Optional fields capture semantic scores, evidence, tool calls, agents, latency, and cost. See [the data format](.agents/skills/improve-agent/references/data-format.md) and [evaluation guide](.agents/skills/improve-agent/references/evaluation.md).
 
 ## Repository layout
 

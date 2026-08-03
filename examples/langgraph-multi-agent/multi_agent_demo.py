@@ -109,7 +109,7 @@ def _model(mode: str, role: str, stage: str) -> BaseChatModel:
     from langchain_openai import ChatOpenAI
 
     return ChatOpenAI(
-        model=os.getenv("AIK_DEMO_MODEL", "gpt-5.4-mini"),
+        model=os.getenv("AIK_DEMO_MODEL", "gpt-5.6-luna"),
         use_responses_api=True,
         reasoning_effort="low",
         timeout=60,
@@ -158,23 +158,11 @@ def build_graph(stage: str) -> TracedAgent:
     return trace
 
 
-def evaluate(*, case: dict[str, Any], result: dict[str, Any], stage: str) -> dict[str, Any]:
-    expected = case.get("expected", {})
-    actual = set(result.get("agents_called", [])) - {"supervisor"}
-    required = set(expected.get("required_agents", []))
-    forbidden = set(expected.get("forbidden_agents", []))
-    required_ok = required <= actual
-    forbidden_ok = not (forbidden & actual)
-    passed = required_ok and forbidden_ok
+def to_aik_evidence(*, case: dict[str, Any], result: dict[str, Any], stage: str) -> dict[str, Any]:
+    """Map graph output to raw AIK evidence without judging correctness."""
     return {
-        "passed": passed,
         "output": result.get("final_answer", ""),
         "agents": result.get("agents_called", []),
         "tool_calls": result.get("tool_calls", []),
-        "scores": {"routing_accuracy": 1.0 if passed else 0.0},
-        "contracts": {
-            "required-agents-called": "pass" if required_ok else "fail",
-            "forbidden-agents-avoided": "pass" if forbidden_ok else "fail",
-        },
         "metadata": {"stage": stage, "mode": os.getenv("AIK_DEMO_MODE", "mock")},
     }

@@ -19,12 +19,12 @@ elif mode == "exit-error":
     print("runner failed", file=sys.stderr)
     raise SystemExit(7)
 else:
-    json.dump(
-        {
-            "passed": request["stage"] == "candidate",
-            "output": f"{request['stage']}:{case['id']}",
-            "agents": ["fixture-agent"],
-            "metadata": {"protocol": request["protocol_version"]},
-        },
-        sys.stdout,
-    )
+    response = {
+        "output": f"{request['stage']}:{case['id']}",
+        "agents": ["fixture-agent"],
+        "tool_calls": [],
+        "metadata": {"protocol": request["protocol_version"]},
+    }
+    if mode != "raw-only":
+        response["passed"] = request["stage"] == "candidate"
+    json.dump(response, sys.stdout)

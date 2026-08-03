@@ -30,6 +30,8 @@ class LangGraphDemoTests(unittest.TestCase):
             comparison["summary"],
             {"improved": 1, "regressed": 0, "unchanged": 3, "not_comparable": 0, "total": 4},
         )
+        self.assertEqual(comparison["acceptance"]["recommendation"], "eligible")
+        self.assertEqual(comparison["acceptance"]["metrics"]["delta"], 0.25)
 
     def test_openai_graph_builds_without_calling_the_api(self) -> None:
         environment = os.environ.copy()

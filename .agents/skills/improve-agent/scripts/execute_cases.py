@@ -21,7 +21,6 @@ STAGES = ("baseline", "candidate")
 def _execution_error(case_id: str, kind: str, message: str, duration_ms: int, exit_code: int | None = None) -> dict[str, Any]:
     return {
         "case_id": case_id,
-        "passed": False,
         "output": "",
         "error": {"type": kind, "message": message},
         "execution": {"duration_ms": duration_ms, "exit_code": exit_code},
@@ -36,7 +35,7 @@ def _run_one(
     cwd: Path,
 ) -> tuple[dict[str, Any], bool]:
     case_id = case["id"]
-    payload = {"protocol_version": "1.0", "stage": stage, "case": case}
+    payload = {"protocol_version": "1.1", "stage": stage, "case": case}
     environment = os.environ.copy()
     environment["AIK_STAGE"] = stage
     environment["AIK_CASE_ID"] = case_id
@@ -78,8 +77,8 @@ def _run_one(
         return _execution_error(case_id, "invalid_response", "Runner response must be a JSON object", duration, 0), True
     if response.get("case_id") not in (None, case_id):
         return _execution_error(case_id, "case_id_mismatch", "Runner returned a different case_id", duration, 0), True
-    if not isinstance(response.get("passed"), bool):
-        return _execution_error(case_id, "invalid_response", "Runner response requires boolean 'passed'", duration, 0), True
+    if "passed" in response and not isinstance(response.get("passed"), bool):
+        return _execution_error(case_id, "invalid_response", "Runner 'passed' must be boolean when supplied", duration, 0), True
 
     result = dict(response)
     result["case_id"] = case_id
@@ -132,7 +131,8 @@ def execute(
     if not working_directory.is_dir():
         raise DataError(f"Runner working directory not found: {working_directory}")
 
-    destination = directory / f"{stage}.jsonl"
+    legacy_destination = directory / f"{stage}.jsonl"
+    destination = directory / f"{stage}.raw.jsonl" if (directory / "evaluation.json").exists() else legacy_destination
     existing = read_jsonl(destination, "case_id") if destination.exists() else []
     if existing and not resume and not overwrite:
         raise DataError(f"{destination.name} already contains results; use --resume or --overwrite")
@@ -151,7 +151,14 @@ def execute(
         write_jsonl(destination, results)
         executed += 1
         execution_errors += int(had_execution_error)
-        state = "ERROR" if had_execution_error else ("PASS" if result["passed"] else "FAIL")
+        if had_execution_error:
+            state = "ERROR"
+        elif result.get("passed") is True:
+            state = "LEGACY PASS"
+        elif result.get("passed") is False:
+            state = "LEGACY FAIL"
+        else:
+            state = "RECORDED"
         print(f"{case_id}: {state}")
 
     return {

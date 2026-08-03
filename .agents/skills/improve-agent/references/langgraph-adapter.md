@@ -1,34 +1,28 @@
 # LangGraph adapter
 
-Use the adapter when a project exposes a compiled graph or a graph factory plus an evaluator.
+Use the adapter when a project exposes a compiled graph or graph factory:
 
 ```bash
 python aik.py run improvements/my-case --stage baseline --cwd my-project -- \
   python .agents/skills/improve-agent/scripts/langgraph_runner.py \
   --graph my_agent.graph:build_graph \
-  --evaluator my_agent.evals:evaluate
+  --transform my_agent.aik:to_evidence
 ```
 
-The graph reference must resolve to an object with `invoke(input)`, or to a zero-argument factory. A factory may optionally accept `stage`:
+The graph reference resolves to an object with `invoke(input)` or a factory. A factory may accept `stage`.
+
+The optional transform maps framework state to raw portable evidence; it does not judge correctness:
 
 ```python
-def build_graph(stage: str):
-    return compiled_graph
-```
-
-The evaluator converts framework-specific state into the portable AIK result:
-
-```python
-def evaluate(*, case, result, stage):
+def to_evidence(*, case, result, stage):
     return {
-        "passed": result["status"] == "ok",
         "output": result["final_answer"],
         "agents": result.get("agents_called", []),
         "tool_calls": result.get("tool_calls", []),
-        "contracts": {"correct-routing": "pass"},
+        "metadata": {"stage": stage},
     }
 ```
 
-The evaluator owns correctness. Keep it deterministic when the expected behavior can be checked in code. Use an LLM evaluator only for behavior that genuinely requires semantic judgment.
+Then run `aik evaluate` against `evaluation.json`. Keep deterministic contracts in AIK and use an external LLM judge only for semantic rubrics.
 
-AIK imports project modules from `--cwd`. The adapter captures incidental standard output and forwards it to standard error so the AIK JSON protocol remains valid.
+AIK imports project modules from `--cwd`. The adapter forwards incidental stdout to stderr to preserve the JSON protocol. `--evaluator` remains a deprecated alias for `--transform` for v0.3 compatibility.

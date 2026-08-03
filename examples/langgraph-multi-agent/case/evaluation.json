@@ -1,0 +1,19 @@
+{
+  "format_version": "1.0",
+  "suite_id": "langgraph-routing-core",
+  "version": "1.0.0",
+  "evaluators": [
+    {"id": "execution-ok", "type": "no_execution_error", "required": true},
+    {"id": "required-agents", "type": "required_agents", "required": true},
+    {"id": "forbidden-agents", "type": "forbidden_agents", "required": true},
+    {"id": "task-completion", "type": "llm_rubric", "required": false, "threshold": 0.7}
+  ],
+  "acceptance": {
+    "reject_on_evaluator_error": true,
+    "no_regression_at_or_above_risk": "high",
+    "critical_cases_must_pass": true,
+    "maximum_regressions": 0,
+    "minimum_candidate_pass_rate": 1.0,
+    "minimum_delta": 0.0
+  }
+}

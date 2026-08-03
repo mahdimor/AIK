@@ -7,118 +7,576 @@
 <strong>Hypothesis</strong><br>Allowing both specialist tools for mixed requests fixes routing without changing single-domain behavior<br><br>
 <strong>Change</strong><br>Replace first-match routing with multi-specialist routing</div>
 <div class="cards"><div class="card"><div class="num">4</div><div class="label">total</div></div><div class="card"><div class="num">1</div><div class="label">Improved</div></div><div class="card"><div class="num">0</div><div class="label">Regressed</div></div><div class="card"><div class="num">3</div><div class="label">Unchanged</div></div><div class="card"><div class="num">0</div><div class="label">Not comparable</div></div></div>
-<div class="recommend"><h3>READY FOR HUMAN DECISION</h3>The candidate improved measured cases without detected pass/fail regressions. Human approval is still required.</div>
+<div class="recommend"><h3>ELIGIBLE FOR HUMAN APPROVAL</h3>All configured acceptance gates passed</div>
 <h2>Case-by-case evidence</h2><section class="case"><div class="case-head"><span class="badge improved">Improved</span><div><h3>mixed-request</h3><div class="sub">Use both specialists for a mixed request</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · FAIL</div><pre>Supervisor summary:
 Billing specialist handled: I was charged twice and the app crashes when I open the invoice.</pre><div class="meta">Agents: supervisor → billing-agent<br>Tools: consult_billing_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 0.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 0.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;fail&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;fail&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1969,
+    &quot;duration_ms&quot;: 3640,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Required values missing: technical-agent&quot;,
+      &quot;score&quot;: 0.0,
+      &quot;status&quot;: &quot;fail&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
 }</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Supervisor summary:
 Billing specialist handled: I was charged twice and the app crashes when I open the invoice.
 Technical specialist handled: I was charged twice and the app crashes when I open the invoice.</pre><div class="meta">Agents: supervisor → billing-agent → technical-agent<br>Tools: consult_billing_agent, consult_technical_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1523,
+    &quot;duration_ms&quot;: 5660,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
-}</pre></details></div></div><div class="meta">Tags: billing, technical, multi-agent, routing<br><span class="delta">Score deltas: routing_accuracy: +1</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>billing-only</h3><div class="sub">Route a billing request only to billing</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Supervisor summary:
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: high · Tags: billing, technical, multi-agent, routing<br><span class="delta">Score deltas: execution-ok: +0, forbidden-agents: +0, required-agents: +1</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>billing-only</h3><div class="sub">Route a billing request only to billing</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Supervisor summary:
 Billing specialist handled: I was charged twice and need a refund.</pre><div class="meta">Agents: supervisor → billing-agent<br>Tools: consult_billing_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1975,
+    &quot;duration_ms&quot;: 3251,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
 }</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Supervisor summary:
 Billing specialist handled: I was charged twice and need a refund.</pre><div class="meta">Agents: supervisor → billing-agent<br>Tools: consult_billing_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1541,
+    &quot;duration_ms&quot;: 3321,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
-}</pre></details></div></div><div class="meta">Tags: billing, routing<br><span class="delta">Score deltas: routing_accuracy: +0</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>general-greeting</h3><div class="sub">Do not invoke a specialist for a greeting</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>This request needs no specialist.</pre><div class="meta">Agents: supervisor<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: medium · Tags: billing, routing<br><span class="delta">Score deltas: execution-ok: +0, forbidden-agents: +0, required-agents: +0</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>general-greeting</h3><div class="sub">Do not invoke a specialist for a greeting</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>This request needs no specialist.</pre><div class="meta">Agents: supervisor<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1737,
+    &quot;duration_ms&quot;: 3714,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
 }</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>This request needs no specialist.</pre><div class="meta">Agents: supervisor<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1519,
+    &quot;duration_ms&quot;: 4424,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
-}</pre></details></div></div><div class="meta">Tags: routing, negative<br><span class="delta">Score deltas: routing_accuracy: +0</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>technical-only</h3><div class="sub">Route an application problem only to technical support</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Supervisor summary:
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;,
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: low · Tags: routing, negative<br><span class="delta">Score deltas: execution-ok: +0, forbidden-agents: +0, required-agents: +0</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>technical-only</h3><div class="sub">Route an application problem only to technical support</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Supervisor summary:
 Technical specialist handled: The app crashes whenever I try to login.</pre><div class="meta">Agents: supervisor → technical-agent<br>Tools: consult_technical_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 2164,
+    &quot;duration_ms&quot;: 3335,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
 }</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Supervisor summary:
 Technical specialist handled: The app crashes whenever I try to login.</pre><div class="meta">Agents: supervisor → technical-agent<br>Tools: consult_technical_agent</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
   &quot;scores&quot;: {
-    &quot;routing_accuracy&quot;: 1.0
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
   },
   &quot;contracts&quot;: {
-    &quot;forbidden-agents-avoided&quot;: &quot;pass&quot;,
-    &quot;required-agents-called&quot;: &quot;pass&quot;
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 1543,
+    &quot;duration_ms&quot;: 4209,
     &quot;exit_code&quot;: 0
   },
-  &quot;error&quot;: null
-}</pre></details></div></div><div class="meta">Tags: technical, routing<br><span class="delta">Score deltas: routing_accuracy: +0</span></div></div></section>
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;technical-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;supervisor&quot;,
+          &quot;technical-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;task-completion&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;semantic&quot;,
+      &quot;reason&quot;: &quot;Optional semantic evaluator skipped; no judge command supplied&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: medium · Tags: technical, routing<br><span class="delta">Score deltas: execution-ok: +0, forbidden-agents: +0, required-agents: +0</span></div></div></section>
 <p class="sub">Generated from open AIK artifacts. A human decision is required before promotion or deployment.</p>
 </main></body></html>

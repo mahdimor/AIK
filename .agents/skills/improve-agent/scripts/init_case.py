@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from datetime import date
 from pathlib import Path
@@ -43,7 +44,32 @@ def initialize(case_name: str, root: str | Path = "improvements") -> Path:
     )
     (case_dir / "case.yaml").write_text(case_yaml, encoding="utf-8", newline="\n")
     (case_dir / "decision.yaml").write_text(decision_yaml, encoding="utf-8", newline="\n")
-    for filename in ("test_cases.jsonl", "baseline.jsonl", "candidate.jsonl"):
+    dataset = {
+        "format_version": "2.0",
+        "dataset_id": normalized,
+        "version": "1.0.0",
+        "cases": "test_cases.jsonl",
+    }
+    evaluation = {
+        "format_version": "1.0",
+        "suite_id": f"{normalized}-evaluation",
+        "version": "1.0.0",
+        "evaluators": [
+            {"id": "execution-ok", "type": "no_execution_error", "required": True},
+            {"id": "legacy-runner-verdict", "type": "runner_verdict", "required": False},
+        ],
+        "acceptance": {
+            "reject_on_evaluator_error": True,
+            "no_regression_at_or_above_risk": "high",
+            "critical_cases_must_pass": True,
+            "maximum_regressions": 0,
+            "minimum_candidate_pass_rate": 0.0,
+            "minimum_delta": 0.0,
+        },
+    }
+    (case_dir / "dataset.json").write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8", newline="\n")
+    (case_dir / "evaluation.json").write_text(json.dumps(evaluation, indent=2) + "\n", encoding="utf-8", newline="\n")
+    for filename in ("test_cases.jsonl", "baseline.raw.jsonl", "baseline.evaluated.jsonl", "candidate.raw.jsonl", "candidate.evaluated.jsonl"):
         (case_dir / filename).touch()
     return case_dir
 
