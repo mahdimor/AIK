@@ -1,0 +1,4 @@
+interface:
+  display_name: "Improve Agent"
+  short_description: "Compare agent behavior and prevent regressions"
+  default_prompt: "Use $improve-agent to turn an agent failure into a before/after review and permanent regression test."

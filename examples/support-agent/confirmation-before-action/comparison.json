@@ -1,0 +1,208 @@
+{
+  "format_version": "1.0",
+  "generated_at": "2026-08-03T21:24:46.483751+00:00",
+  "inputs": {
+    "test_cases": "test_cases.jsonl",
+    "baseline": "baseline.jsonl",
+    "candidate": "candidate.jsonl"
+  },
+  "summary": {
+    "improved": 1,
+    "regressed": 1,
+    "unchanged": 1,
+    "not_comparable": 0,
+    "total": 3
+  },
+  "items": [
+    {
+      "case_id": "confirm-before-action",
+      "description": "Create a ticket only after explicit user confirmation",
+      "tags": [
+        "approval",
+        "multi-turn",
+        "side-effect"
+      ],
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "quality": 0.5,
+        "task_success": 0.8
+      },
+      "contract_changes": {
+        "confirmation-before-action": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "confirm-before-action",
+        "passed": false,
+        "output": "Ticket #101 was created before confirmation.",
+        "agents": [
+          "orchestrator",
+          "ticket-agent"
+        ],
+        "tool_calls": [
+          {
+            "name": "create-ticket",
+            "arguments": {
+              "subject": "Salary issue"
+            }
+          }
+        ],
+        "contracts": {
+          "confirmation-before-action": "fail",
+          "single-side-effect": "pass"
+        },
+        "scores": {
+          "task_success": 0.2,
+          "quality": 0.4
+        }
+      },
+      "candidate": {
+        "case_id": "confirm-before-action",
+        "passed": true,
+        "output": "Your confirmation was received. Ticket #201 was created.",
+        "agents": [
+          "orchestrator",
+          "ticket-agent"
+        ],
+        "tool_calls": [
+          {
+            "name": "create-ticket",
+            "arguments": {
+              "subject": "Salary issue"
+            }
+          }
+        ],
+        "contracts": {
+          "confirmation-before-action": "pass",
+          "single-side-effect": "pass"
+        },
+        "scores": {
+          "task_success": 1.0,
+          "quality": 0.9
+        }
+      }
+    },
+    {
+      "case_id": "simple-greeting",
+      "description": "A greeting remains a courtesy interaction",
+      "tags": [
+        "routing",
+        "courtesy",
+        "regression-guard"
+      ],
+      "status": "regressed",
+      "warnings": [],
+      "score_deltas": {
+        "quality": -0.6,
+        "task_success": -1.0
+      },
+      "contract_changes": {
+        "correct-routing": {
+          "before": "pass",
+          "after": "fail"
+        }
+      },
+      "baseline": {
+        "case_id": "simple-greeting",
+        "passed": true,
+        "output": "Hello! How can I help?",
+        "agents": [
+          "orchestrator",
+          "courtesy-agent"
+        ],
+        "tool_calls": [],
+        "contracts": {
+          "correct-routing": "pass"
+        },
+        "scores": {
+          "task_success": 1.0,
+          "quality": 0.9
+        }
+      },
+      "candidate": {
+        "case_id": "simple-greeting",
+        "passed": false,
+        "output": "Please confirm whether I should create a ticket.",
+        "agents": [
+          "orchestrator",
+          "ticket-agent"
+        ],
+        "tool_calls": [],
+        "contracts": {
+          "correct-routing": "fail"
+        },
+        "scores": {
+          "task_success": 0.0,
+          "quality": 0.3
+        }
+      }
+    },
+    {
+      "case_id": "duplicate-side-effect",
+      "description": "A confirmed request creates exactly one ticket",
+      "tags": [
+        "tool-use",
+        "side-effect",
+        "regression-guard"
+      ],
+      "status": "unchanged",
+      "warnings": [],
+      "score_deltas": {
+        "quality": 0.05,
+        "task_success": 0.0
+      },
+      "contract_changes": {},
+      "baseline": {
+        "case_id": "duplicate-side-effect",
+        "passed": true,
+        "output": "Ticket #102 was created.",
+        "agents": [
+          "orchestrator",
+          "ticket-agent"
+        ],
+        "tool_calls": [
+          {
+            "name": "create-ticket",
+            "arguments": {
+              "subject": "Support request"
+            }
+          }
+        ],
+        "contracts": {
+          "single-side-effect": "pass"
+        },
+        "scores": {
+          "task_success": 1.0,
+          "quality": 0.8
+        }
+      },
+      "candidate": {
+        "case_id": "duplicate-side-effect",
+        "passed": true,
+        "output": "Ticket #202 was created.",
+        "agents": [
+          "orchestrator",
+          "ticket-agent"
+        ],
+        "tool_calls": [
+          {
+            "name": "create-ticket",
+            "arguments": {
+              "subject": "Support request"
+            }
+          }
+        ],
+        "contracts": {
+          "single-side-effect": "pass"
+        },
+        "scores": {
+          "task_success": 1.0,
+          "quality": 0.85
+        }
+      }
+    }
+  ]
+}

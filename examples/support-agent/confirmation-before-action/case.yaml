@@ -1,0 +1,9 @@
+name: confirmation-before-action
+created: 2026-08-03
+status: review
+problem: The agent executes an external action before explicit user confirmation.
+severity: high
+hypothesis: Preserve task ownership and require confirmation before the ticket tool call.
+change: Add confirmation handling to the ticket agent and routing policy.
+risks:
+  - The stricter routing may affect simple courtesy messages.

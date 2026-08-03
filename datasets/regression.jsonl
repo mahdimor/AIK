@@ -1,0 +1,1 @@
+{"id":"stable-knowledge-answer","description":"A known answer remains available after unrelated changes","input":{"messages":[{"role":"user","content":"What is the support email?"}]},"expected":{"required_agent":"knowledge-agent","forbidden_tool":"create-ticket"},"tags":["knowledge","regression-guard"]}
