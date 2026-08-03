@@ -76,6 +76,17 @@ Useful execution options:
 - `--tag routing`: select cases sharing a tag, repeatable;
 - `--cwd path`: run the command from a project directory.
 
+## LangGraph multi-agent demo
+
+AIK includes a real LangGraph example based on LangChain's official tool-based subagents pattern: one supervisor coordinates billing and technical specialists. The mock mode runs the complete graph and AIK workflow without an API key:
+
+```bash
+python -m pip install -r examples/langgraph-multi-agent/requirements.txt
+python examples/langgraph-multi-agent/run_demo.py --mode mock
+```
+
+To use OpenAI, set `OPENAI_API_KEY` and replace `--mode mock` with `--mode openai`. See [the demo guide](examples/langgraph-multi-agent/README.md) and [the reusable adapter contract](.agents/skills/improve-agent/references/langgraph-adapter.md).
+
 ## What is tracked
 
 Every test case is classified as:

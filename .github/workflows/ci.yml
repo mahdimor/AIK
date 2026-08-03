@@ -31,3 +31,15 @@ jobs:
           python aik.py run examples/execution-bridge --stage baseline --overwrite -- python examples/runners/fake_agent.py
           python aik.py run examples/execution-bridge --stage candidate --overwrite -- python examples/runners/fake_agent.py
           python aik.py review examples/execution-bridge
+
+  langgraph-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install optional LangGraph demo
+        run: python -m pip install -r examples/langgraph-multi-agent/requirements.txt
+      - name: Test LangGraph demo without API calls
+        run: python -m unittest tests.test_langgraph_demo -v

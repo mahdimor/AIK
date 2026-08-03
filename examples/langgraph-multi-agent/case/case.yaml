@@ -1,0 +1,9 @@
+name: langgraph-multi-agent-routing
+created: 2026-08-03
+status: draft
+problem: The baseline supervisor drops the technical part of mixed billing and technical requests
+severity: high
+hypothesis: Allowing both specialist tools for mixed requests fixes routing without changing single-domain behavior
+change: Replace first-match routing with multi-specialist routing
+risks:
+  - The supervisor may call unnecessary specialists

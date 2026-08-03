@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:

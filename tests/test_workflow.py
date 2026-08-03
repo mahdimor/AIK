@@ -224,6 +224,32 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("executed=1 skipped=0 execution_errors=0", completed.stdout)
 
+    def test_langgraph_adapter_loads_factory_and_evaluator(self) -> None:
+        case_dir = initialize("Adapter Case", self.root / "improvements")
+        write_jsonl(
+            case_dir / "test_cases.jsonl",
+            [{"id": "adapter-1", "description": "Adapter", "input": {"value": 2}, "expected": {"value": 4}, "tags": ["adapter"]}],
+        )
+        adapter = ROOT / ".agents" / "skills" / "improve-agent" / "scripts" / "langgraph_runner.py"
+        command = [
+            sys.executable,
+            str(adapter),
+            "--graph",
+            "runnable_module:build_graph",
+            "--evaluator",
+            "runnable_module:evaluate",
+        ]
+        summary = execute(
+            case_dir,
+            "baseline",
+            command,
+            runner_cwd=ROOT / "tests" / "fixtures",
+        )
+        self.assertEqual(summary["execution_errors"], 0)
+        result = read_jsonl(case_dir / "baseline.jsonl", "case_id")[0]
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["metadata"]["stage"], "baseline")
+
 
 if __name__ == "__main__":
     unittest.main()

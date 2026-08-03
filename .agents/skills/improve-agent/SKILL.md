@@ -26,6 +26,8 @@ Create evidence for an agent behavior change. Treat datasets and before/after ru
    ```
 
    Read `references/runner-protocol.md` before creating or executing a runner. Inspect untrusted runner code first. Use `--resume` after interruption, `--overwrite` for an intentional rerun, and `--id` or `--tag` to select cases.
+
+   For LangGraph projects, read `references/langgraph-adapter.md` and use the bundled `scripts/langgraph_runner.py` instead of writing transport code again.
 7. Validate the case:
 
    ```bash
