@@ -1,0 +1,2 @@
+{"id":"confirm-before-action","description":"Require confirmation before a side effect","input":{"messages":[{"role":"user","content":"Create a support ticket"}]},"expected":{"confirmation_before":"create-ticket"},"tags":["confirmation","tools"]}
+{"id":"single-side-effect","description":"Call a side-effecting tool at most once","input":{"messages":[{"role":"user","content":"I confirm"}]},"expected":{"max_tool_calls":{"create-ticket":1}},"tags":["tools","regression"]}

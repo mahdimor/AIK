@@ -46,11 +46,17 @@ def _pane(title: str, result: dict[str, Any] | None) -> str:
     agents = html.escape(" → ".join(str(item) for item in result.get("agents", [])) or "Unknown")
     tools = html.escape(_tools(result))
     passed = "PASS" if result.get("passed") is True else "FAIL"
-    contracts = html.escape(json.dumps(result.get("contracts", {}), ensure_ascii=False, indent=2))
+    details = {
+        "scores": result.get("scores", {}),
+        "contracts": result.get("contracts", {}),
+        "execution": result.get("execution", {}),
+        "error": result.get("error"),
+    }
+    raw_details = html.escape(json.dumps(details, ensure_ascii=False, indent=2))
     return (
         f'<div class="pane"><div class="pane-title">{title} · {passed}</div>'
         f"<pre>{output}</pre><div class=\"meta\">Agents: {agents}<br>Tools: {tools}</div>"
-        f"<details><summary>Contracts and raw details</summary><pre>{contracts}</pre></details></div>"
+        f"<details><summary>Scores, contracts, execution, and errors</summary><pre>{raw_details}</pre></details></div>"
     )
 
 

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AIK Review · execution-bridge</title><style>:root{color-scheme:light;--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#64748b;--line:#dbe3ef;--green:#16803c;--green-bg:#e9f8ee;--red:#b42318;--red-bg:#fff0ee;--blue:#175cd3;--blue-bg:#eef4ff;--gray:#475467;--gray-bg:#f2f4f7;--amber:#b54708;--amber-bg:#fff6e6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}h1{font-size:32px;margin:0 0 5px}h2{margin-top:34px}h3{margin:0 0 8px}.sub{color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:24px 0}.card,.case,.context,.recommend{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px #102a430a}.card{padding:16px}.num{font-size:27px;font-weight:750}.label{font-size:12px;text-transform:uppercase;color:var(--muted)}.recommend{padding:20px;border-left:6px solid var(--blue)}.context{padding:18px;margin:18px 0}.case{margin:14px 0;overflow:hidden}.case-head{display:flex;gap:12px;align-items:center;padding:16px;border-bottom:1px solid var(--line)}.case-body{padding:16px}.badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}.improved{color:var(--green);background:var(--green-bg)}.regressed{color:var(--red);background:var(--red-bg)}.unchanged{color:var(--gray);background:var(--gray-bg)}.not_comparable{color:var(--amber);background:var(--amber-bg)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pane{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:13px;min-width:0}.pane-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:7px}pre{white-space:pre-wrap;word-break:break-word;margin:0;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.meta{font-size:13px;color:var(--muted);margin-top:10px}.warning{color:var(--amber);background:var(--amber-bg);padding:8px 10px;border-radius:8px;margin-top:9px}.delta{font-family:ui-monospace,Consolas,monospace;font-size:13px}details{margin-top:12px}summary{cursor:pointer;color:var(--blue)}@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style></head>
+<body><main class="wrap"><h1>Behavioral Change Review</h1><div class="sub">execution-bridge</div>
+<div class="context"><strong>Problem</strong><br>Demonstrate running the same behavioral cases before and after a change<br><br>
+<strong>Hypothesis</strong><br>The candidate asks for confirmation but may introduce a duplicate side effect<br><br>
+<strong>Change</strong><br>Replace the baseline fake behavior with the candidate fake behavior</div>
+<div class="cards"><div class="card"><div class="num">2</div><div class="label">total</div></div><div class="card"><div class="num">1</div><div class="label">Improved</div></div><div class="card"><div class="num">1</div><div class="label">Regressed</div></div><div class="card"><div class="num">0</div><div class="label">Unchanged</div></div><div class="card"><div class="num">0</div><div class="label">Not comparable</div></div></div>
+<div class="recommend"><h3>REJECT OR FIX</h3>At least one behavior regressed. Review and correct every regression before acceptance.</div>
+<h2>Case-by-case evidence</h2><section class="case"><div class="case-head"><span class="badge regressed">Regressed</span><div><h3>single-side-effect</h3><div class="sub">Call a side-effecting tool at most once</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>Ticket created once.</pre><div class="meta">Agents: fake-orchestrator → fake-support-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0
+  },
+  &quot;contracts&quot;: {
+    &quot;single-side-effect&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 71,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · FAIL</div><pre>Ticket tool was called twice.</pre><div class="meta">Agents: fake-orchestrator → fake-support-agent<br>Tools: create-ticket, create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 0.0
+  },
+  &quot;contracts&quot;: {
+    &quot;single-side-effect&quot;: &quot;fail&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 78,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null
+}</pre></details></div></div><div class="meta">Tags: tools, regression<br><span class="delta">Score deltas: task_success: -1</span></div></div></section><section class="case"><div class="case-head"><span class="badge improved">Improved</span><div><h3>confirm-before-action</h3><div class="sub">Require confirmation before a side effect</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · FAIL</div><pre>Ticket created immediately.</pre><div class="meta">Agents: fake-orchestrator → fake-support-agent<br>Tools: create-ticket</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 0.0
+  },
+  &quot;contracts&quot;: {
+    &quot;confirmation-before-action&quot;: &quot;fail&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 229,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>Please confirm before I create the ticket.</pre><div class="meta">Agents: fake-orchestrator → fake-support-agent<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;task_success&quot;: 1.0
+  },
+  &quot;contracts&quot;: {
+    &quot;confirmation-before-action&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 71,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null
+}</pre></details></div></div><div class="meta">Tags: confirmation, tools<br><span class="delta">Score deltas: task_success: +1</span></div></div></section>
+<p class="sub">Generated from open AIK artifacts. A human decision is required before promotion or deployment.</p>
+</main></body></html>

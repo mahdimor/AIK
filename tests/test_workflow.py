@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from common import read_jsonl, write_json, write_jsonl  # noqa: E402
 from compare_runs import compare  # noqa: E402
+from execute_cases import execute  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from render_review import render  # noqa: E402
@@ -52,6 +53,24 @@ class WorkflowTests(unittest.TestCase):
                 {"case_id": "a", "passed": True, "output": "new", "scores": {"q": 0.8}},
                 {"case_id": "b", "passed": False, "output": "new", "scores": {"q": 0.2}},
                 {"case_id": "c", "passed": True, "output": "same"},
+            ],
+        )
+        return case_dir
+
+    def _write_execution_case(self, modes: list[str] | None = None) -> Path:
+        case_dir = initialize("Execution Case", self.root / "improvements")
+        chosen_modes = modes or ["normal", "normal"]
+        write_jsonl(
+            case_dir / "test_cases.jsonl",
+            [
+                {
+                    "id": f"run-{index}",
+                    "description": f"Runner case {index}",
+                    "input": {"mode": mode},
+                    "expected": {},
+                    "tags": ["runner", "even" if index % 2 == 0 else "odd"],
+                }
+                for index, mode in enumerate(chosen_modes, start=1)
             ],
         )
         return case_dir
@@ -136,6 +155,74 @@ class WorkflowTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 1)
         self.assertIn("ERROR:", completed.stdout)
+
+    def test_command_runner_generates_both_stages_and_resumes(self) -> None:
+        case_dir = self._write_execution_case()
+        runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
+
+        baseline = execute(case_dir, "baseline", runner)
+        self.assertEqual(baseline["executed"], 2)
+        self.assertEqual([item["passed"] for item in read_jsonl(case_dir / "baseline.jsonl", "case_id")], [False, False])
+
+        first = execute(case_dir, "candidate", runner, selected_ids={"run-1"})
+        self.assertEqual(first["executed"], 1)
+        resumed = execute(case_dir, "candidate", runner, resume=True)
+        self.assertEqual(resumed["executed"], 1)
+        self.assertEqual(resumed["skipped"], 1)
+        candidate = read_jsonl(case_dir / "candidate.jsonl", "case_id")
+        self.assertEqual([item["case_id"] for item in candidate], ["run-1", "run-2"])
+        self.assertTrue(all(item["passed"] for item in candidate))
+
+    def test_command_runner_captures_protocol_errors_and_timeouts(self) -> None:
+        case_dir = self._write_execution_case(["invalid-json", "exit-error", "timeout"])
+        runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
+
+        summary = execute(case_dir, "baseline", runner, timeout_seconds=0.5)
+
+        self.assertEqual(summary["execution_errors"], 3)
+        records = read_jsonl(case_dir / "baseline.jsonl", "case_id")
+        self.assertEqual(
+            {item["error"]["type"] for item in records},
+            {"invalid_json", "runner_exit", "timeout"},
+        )
+
+    def test_command_runner_refuses_implicit_overwrite(self) -> None:
+        case_dir = self._write_execution_case(["normal"])
+        runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
+        execute(case_dir, "baseline", runner)
+        with self.assertRaises(ValueError):
+            execute(case_dir, "baseline", runner)
+
+    def test_command_runner_filters_by_tag(self) -> None:
+        case_dir = self._write_execution_case()
+        runner = [sys.executable, str(ROOT / "tests" / "fixtures" / "protocol_runner.py")]
+        summary = execute(case_dir, "baseline", runner, selected_tags={"even"})
+        self.assertEqual(summary["selected"], 1)
+        records = read_jsonl(case_dir / "baseline.jsonl", "case_id")
+        self.assertEqual([item["case_id"] for item in records], ["run-2"])
+
+    def test_root_cli_executes_runner_after_separator(self) -> None:
+        case_dir = self._write_execution_case(["normal"])
+        runner = str(ROOT / "tests" / "fixtures" / "protocol_runner.py")
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "aik.py"),
+                "run",
+                str(case_dir),
+                "--stage",
+                "baseline",
+                "--",
+                sys.executable,
+                runner,
+            ],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("executed=1 skipped=0 execution_errors=0", completed.stdout)
 
 
 if __name__ == "__main__":

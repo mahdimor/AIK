@@ -1,0 +1,9 @@
+name: execution-bridge
+created: 2026-08-03
+status: draft
+problem: Demonstrate running the same behavioral cases before and after a change
+severity: medium
+hypothesis: The candidate asks for confirmation but may introduce a duplicate side effect
+change: Replace the baseline fake behavior with the candidate fake behavior
+risks:
+  - A targeted improvement can introduce another regression

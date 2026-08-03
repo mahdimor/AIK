@@ -26,3 +26,8 @@ jobs:
         run: python aik.py validate examples/support-agent/confirmation-before-action
       - name: Generate example review
         run: python aik.py demo
+      - name: Exercise command runner
+        run: |
+          python aik.py run examples/execution-bridge --stage baseline --overwrite -- python examples/runners/fake_agent.py
+          python aik.py run examples/execution-bridge --stage candidate --overwrite -- python examples/runners/fake_agent.py
+          python aik.py review examples/execution-bridge

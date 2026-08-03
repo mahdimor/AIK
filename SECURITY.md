@@ -7,4 +7,4 @@ AIK stores agent inputs, outputs, tool arguments, and evaluation evidence as pla
 - Review `tool_calls`, `output`, and `metadata` fields before promotion.
 - Report a vulnerability privately to the repository maintainer rather than opening a public issue with sensitive evidence.
 
-AIK does not execute agents, call tools, deploy prompts, or connect to production systems.
+AIK does not directly call an SDK, MCP server, tool, model, or production system. The optional `aik run` command executes a user-supplied subprocess with the current user's permissions. Inspect runner code before execution, avoid shell wrappers, and keep credentials in the runner environment rather than AIK artifacts.

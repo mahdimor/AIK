@@ -39,11 +39,14 @@ Optional portable fields:
   "latency_ms": 1250,
   "cost": 0.004,
   "error": null,
+  "execution": {"duration_ms": 1250, "exit_code": 0},
   "metadata": {}
 }
 ```
 
 Use `pass`, `fail`, or `not_applicable` for contract results.
+
+Execution failures use a structured `error`, for example `{"type": "timeout", "message": "Runner exceeded 60 seconds"}`. They are preserved for diagnosis but must not be interpreted as trustworthy agent-quality failures. See `runner-protocol.md` for command integration.
 
 ## Comparison
 

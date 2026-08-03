@@ -1,6 +1,6 @@
 ---
 name: improve-agent
-description: Turn an AI-agent failure or behavior change into a reproducible improvement case with versioned test cases, baseline and candidate runs, deterministic improvement/regression tracking, a human-readable before/after review, and promoted regression tests. Use when comparing agent versions, investigating a failed conversation or tool call, validating a prompt/model/routing/tool change, checking multi-agent behavior, or preserving a fixed incident as a permanent test.
+description: Turn an AI-agent failure or behavior change into a reproducible improvement case with versioned tests, optional framework-agnostic command execution, baseline and candidate runs, deterministic improvement/regression tracking, a human-readable review, and promoted regression tests. Use when running or comparing agent versions, investigating a failed conversation or tool call, validating a prompt/model/routing/tool change, checking multi-agent behavior, or preserving a fixed incident as a permanent test.
 ---
 
 # Improve Agent
@@ -18,8 +18,14 @@ Create evidence for an agent behavior change. Treat datasets and before/after ru
 
 3. Complete `case.yaml` with the problem, hypothesis, intended change, and risks.
 4. Add stable test IDs and behavioral expectations to `test_cases.jsonl`. Read `references/data-format.md` when creating or converting data.
-5. Populate `baseline.jsonl` from the current agent version before changing behavior.
-6. Populate `candidate.jsonl` from the candidate version on the same test cases.
+5. Populate `baseline.jsonl` and `candidate.jsonl` on the same cases. Import existing evidence, or execute a project-owned runner:
+
+   ```bash
+   python .agents/skills/improve-agent/scripts/execute_cases.py improvements/<case-name> --stage baseline -- python path/to/runner.py
+   python .agents/skills/improve-agent/scripts/execute_cases.py improvements/<case-name> --stage candidate -- python path/to/runner.py
+   ```
+
+   Read `references/runner-protocol.md` before creating or executing a runner. Inspect untrusted runner code first. Use `--resume` after interruption, `--overwrite` for an intentional rerun, and `--id` or `--tag` to select cases.
 7. Validate the case:
 
    ```bash
@@ -51,6 +57,7 @@ Create evidence for an agent behavior change. Treat datasets and before/after ru
 - Prefer deterministic contracts for tool counts, routing, confirmations, forbidden data, and turn limits. Read `references/behavioral-contracts.md` when specifying contracts.
 - Use the failure categories in `references/failure-taxonomy.md` when diagnosing cases.
 - Never deploy an agent or mutate a production system as part of this workflow.
+- Treat runner commands as project code with the current user's permissions. AIK does not sandbox them.
 - Never promote tests before a human explicitly accepts the candidate.
 - Redact secrets and personal or internal identifiers before sharing artifacts.
 
