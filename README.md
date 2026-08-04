@@ -101,6 +101,34 @@ python examples/langgraph-multi-agent/run_demo.py --mode mock
 
 To use OpenAI for the agent, set `OPENAI_API_KEY` and replace `--mode mock` with `--mode openai`. To keep the mock agent but evaluate its semantic rubric with OpenAI, add `--judge openai`. See [the demo guide](examples/langgraph-multi-agent/README.md) and [the reusable adapter contract](.agents/skills/improve-agent/references/langgraph-adapter.md).
 
+## Champion history and local dashboard
+
+Preserve an evaluated campaign as immutable history, then generate a standalone local
+dashboard that answers "are we better than before, is the candidate eligible, and did
+anything regress" without opening raw JSON:
+
+```bash
+python aik.py history init improvements/my-agent-failure --stage baseline --label "Initial version" --agent-version v1
+python aik.py history record improvements/my-agent-failure --stage candidate --label "Fix" --agent-version v2
+python aik.py history promote <run-id>
+python aik.py dashboard
+```
+
+Then open `aik-history/dashboard.html`. History recording never reruns an agent; it
+only archives evidence Sprint 4 (`aik evaluate` / `aik review`) already produced.
+Promotion requires a hash-verified, non-stale, cohort-compatible candidate with an
+`eligible` recommendation and an accepted human decision — there is no bypass. See
+[the history and dashboard reference](.agents/skills/improve-agent/references/history-dashboard.md).
+Try the included demo:
+
+```bash
+python examples/langgraph-multi-agent/history-demo/build_history_demo.py
+```
+
+which archives the anchor, shows a pending decision correctly blocking promotion,
+accepts and promotes the candidate, and generates
+`examples/langgraph-multi-agent/history-demo/aik-history/dashboard.html`.
+
 ## What is tracked
 
 Every test case is classified as:
@@ -118,6 +146,7 @@ Each comparison also contains `eligible`, `rejected`, or `manual_review`, policy
 aik.py                                  Single user-facing CLI
 .agents/skills/improve-agent/           Portable Agent Skill
 datasets/regression.jsonl               Permanent accepted tests
+aik-history/                            Immutable champion history and local dashboard (generated)
 examples/                               Anonymized working example
 tests/                                  Dependency-free test suite
 ```
@@ -131,9 +160,11 @@ AIK never embeds credentials, deploys a prompt, or decides acceptance automatica
 ## Development
 
 ```bash
-python -m compileall -q aik.py .agents tests
+python -m compileall -q aik.py .agents tests examples
 python -m unittest discover -s tests -v
 python aik.py validate examples/support-agent/confirmation-before-action
+python aik.py history validate
+python aik.py dashboard
 ```
 
 MIT licensed. Python 3.10+.

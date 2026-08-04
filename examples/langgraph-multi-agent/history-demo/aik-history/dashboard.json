@@ -1,0 +1,214 @@
+{
+  "format_version": "1.0",
+  "generated_at": "2026-08-04T14:07:03.289321+00:00",
+  "header": {
+    "generated_at": "2026-08-04T14:07:03.289321+00:00",
+    "history_root": "C:\\Dev\\improverskill\\AIK\\examples\\langgraph-multi-agent\\history-demo\\aik-history",
+    "anchor_run_id": "20260804T140703Z-dac8094c",
+    "anchor_agent_version": "demo-v1",
+    "champion_run_id": "20260804T140703Z-3608f8f6",
+    "champion_agent_version": "demo-v2",
+    "candidate_run_id": "20260804T140703Z-3608f8f6",
+    "candidate_agent_version": "demo-v2",
+    "current_cohort_id": "sha256:f9823081e0e592f1c5f5d0a8a1ba6676ced2b300e70c5c8d4fbef53be6da3a82"
+  },
+  "state": {
+    "anchor_run_id": "20260804T140703Z-dac8094c",
+    "champion_run_id": "20260804T140703Z-3608f8f6",
+    "selected_candidate_run_id": "20260804T140703Z-3608f8f6"
+  },
+  "comparability": {
+    "comparable": true,
+    "cohort_id": "sha256:f9823081e0e592f1c5f5d0a8a1ba6676ced2b300e70c5c8d4fbef53be6da3a82",
+    "cohort_anchor_run_id": null,
+    "reasons": []
+  },
+  "kpis": {
+    "champion_level": 1.0,
+    "champion_level_numerator": 4,
+    "champion_level_denominator": 4,
+    "candidate_level": 1.0,
+    "candidate_level_numerator": 4,
+    "candidate_level_denominator": 4,
+    "delta_vs_champion": 0.0,
+    "delta_vs_champion_reason": null,
+    "delta_vs_anchor": 0.25,
+    "delta_vs_anchor_reason": null,
+    "slope": 25.0,
+    "slope_reason": null,
+    "candidate_recommendation": "eligible",
+    "candidate_human_decision": "accepted",
+    "regressions": 0,
+    "manual_review": 0,
+    "champion_manual_review": 0
+  },
+  "trend": [
+    {
+      "run_id": "20260804T140703Z-dac8094c",
+      "order": 0,
+      "cohort_id": "sha256:f9823081e0e592f1c5f5d0a8a1ba6676ced2b300e70c5c8d4fbef53be6da3a82",
+      "recorded_at": "2026-08-04T14:07:03.104066+00:00",
+      "agent_version": "demo-v1",
+      "pass_rate": 0.75,
+      "kind": "anchor"
+    },
+    {
+      "run_id": "20260804T140703Z-3608f8f6",
+      "order": 1,
+      "cohort_id": "sha256:f9823081e0e592f1c5f5d0a8a1ba6676ced2b300e70c5c8d4fbef53be6da3a82",
+      "recorded_at": "2026-08-04T14:07:03.211516+00:00",
+      "agent_version": "demo-v2",
+      "pass_rate": 1.0,
+      "kind": "champion"
+    }
+  ],
+  "evaluators": [
+    {
+      "evaluator_id": "execution-ok",
+      "kind": "deterministic",
+      "champion_score": 1.0,
+      "candidate_score": 1.0,
+      "delta": 0.0,
+      "pass": 4,
+      "fail": 0,
+      "error": 0,
+      "not_applicable": 0,
+      "cases_scored": 4
+    },
+    {
+      "evaluator_id": "forbidden-agents",
+      "kind": "deterministic",
+      "champion_score": 1.0,
+      "candidate_score": 1.0,
+      "delta": 0.0,
+      "pass": 4,
+      "fail": 0,
+      "error": 0,
+      "not_applicable": 0,
+      "cases_scored": 4
+    },
+    {
+      "evaluator_id": "required-agents",
+      "kind": "deterministic",
+      "champion_score": 1.0,
+      "candidate_score": 1.0,
+      "delta": 0.0,
+      "pass": 4,
+      "fail": 0,
+      "error": 0,
+      "not_applicable": 0,
+      "cases_scored": 4
+    },
+    {
+      "evaluator_id": "task-completion",
+      "kind": "semantic",
+      "champion_score": null,
+      "candidate_score": null,
+      "delta": null,
+      "pass": 0,
+      "fail": 0,
+      "error": 0,
+      "not_applicable": 4,
+      "cases_scored": 0
+    }
+  ],
+  "coverage": {
+    "available": true,
+    "total_cases": 4,
+    "by_split": {
+      "development": 2,
+      "regression": 1,
+      "challenge": 1
+    },
+    "by_risk": {
+      "medium": 2,
+      "high": 1,
+      "low": 1
+    },
+    "by_source": {
+      "authored_scenario": 2,
+      "known_regression": 1,
+      "boundary_case": 1
+    },
+    "by_tag": {
+      "billing": 2,
+      "routing": 4,
+      "technical": 2,
+      "multi-agent": 1,
+      "negative": 1
+    },
+    "untagged": 0,
+    "high_or_critical": 1,
+    "duplicate_inputs": [],
+    "warnings": [
+      "No holdout-split cases"
+    ]
+  },
+  "regressions": {
+    "summary": {
+      "improved": 1,
+      "regressed": 0,
+      "unchanged": 3,
+      "not_comparable": 0,
+      "total": 4
+    },
+    "by_risk": {},
+    "by_tag": {},
+    "items": []
+  },
+  "timeline": [
+    {
+      "run_id": "20260804T140703Z-3608f8f6",
+      "recorded_at": "2026-08-04T14:07:03.211516+00:00",
+      "label": "Fixed mixed routing (accepted)",
+      "agent_version": "demo-v2",
+      "stage": "candidate",
+      "role": "candidate",
+      "cohort_prefix": "f9823081",
+      "pass_rate": 1.0,
+      "acceptance_recommendation": "eligible",
+      "human_decision": "accepted",
+      "promoted": true,
+      "is_current_champion": true,
+      "comparison_link": "runs/20260804T140703Z-3608f8f6/comparison.json",
+      "review_link": "runs/20260804T140703Z-3608f8f6/review.html"
+    },
+    {
+      "run_id": "20260804T140703Z-5ebaf6f9",
+      "recorded_at": "2026-08-04T14:07:03.135486+00:00",
+      "label": "Fixed mixed routing (pending review)",
+      "agent_version": "demo-v2",
+      "stage": "candidate",
+      "role": "candidate",
+      "cohort_prefix": "f9823081",
+      "pass_rate": 1.0,
+      "acceptance_recommendation": "eligible",
+      "human_decision": "pending",
+      "promoted": false,
+      "is_current_champion": false,
+      "comparison_link": "runs/20260804T140703Z-5ebaf6f9/comparison.json",
+      "review_link": "runs/20260804T140703Z-5ebaf6f9/review.html"
+    },
+    {
+      "run_id": "20260804T140703Z-dac8094c",
+      "recorded_at": "2026-08-04T14:07:03.104066+00:00",
+      "label": "Initial supervisor",
+      "agent_version": "demo-v1",
+      "stage": "baseline",
+      "role": "anchor",
+      "cohort_prefix": "f9823081",
+      "pass_rate": 0.75,
+      "acceptance_recommendation": null,
+      "human_decision": null,
+      "promoted": false,
+      "is_current_champion": false,
+      "comparison_link": "runs/20260804T140703Z-dac8094c/comparison.json",
+      "review_link": "runs/20260804T140703Z-dac8094c/review.html"
+    }
+  ],
+  "warnings": [],
+  "integrity": {
+    "valid": true,
+    "errors": []
+  }
+}

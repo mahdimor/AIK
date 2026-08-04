@@ -1,6 +1,6 @@
 ---
 name: improve-agent
-description: Turn an AI-agent failure or behavior change into a reproducible improvement case with governed datasets, raw executions, deterministic and optional LLM evaluators, explicit acceptance gates, baseline/candidate comparison, human review, and promoted regression tests. Use when evaluating or comparing agent versions, investigating failed conversations or tool calls, validating prompt/model/routing/tool changes, checking multi-agent behavior, or preserving fixed incidents as permanent tests.
+description: Turn an AI-agent failure or behavior change into a reproducible improvement case with governed datasets, raw executions, deterministic and optional LLM evaluators, explicit acceptance gates, baseline/candidate comparison, human review, promoted regression tests, immutable champion history, and a standalone local dashboard. Use when evaluating or comparing agent versions, investigating failed conversations or tool calls, validating prompt/model/routing/tool changes, checking multi-agent behavior, preserving fixed incidents as permanent tests, or tracking accepted agent versions over time.
 ---
 
 # Improve Agent
@@ -56,6 +56,34 @@ Create evidence for an agent behavior change. Treat datasets and before/after ru
    ```bash
    python .agents/skills/improve-agent/scripts/promote_tests.py improvements/<case-name> datasets/regression.jsonl --status improved
    ```
+
+## Champion History and Dashboard
+
+Once a campaign is evaluated and reviewed, preserve it as immutable history and see
+progress over time without opening raw JSON:
+
+```bash
+python aik.py history init improvements/<case-name> --stage baseline --label "Initial version" --agent-version v1
+python aik.py history record improvements/<case-name> --stage candidate --label "Fix" --agent-version v2
+python aik.py history promote <run-id>     # only after decision.yaml is accepted and the recommendation is eligible
+python aik.py history list
+python aik.py history validate
+python aik.py dashboard
+```
+
+History recording only archives evidence Sprint 4 already produced; it never reruns
+an agent. `history init` runs once per history root and sets the fixed anchor and the
+initial champion together. `history record` never moves the champion; only explicit
+`history promote` does, and only when the archived run is hash-verified, its role is
+`candidate`, it is not stale, its dataset/evaluator cohort matches the champion (or a
+recorded `cohort_anchor` rerun bridges a dataset/evaluator change), its recommendation
+is `eligible`, and its human decision is accepted. `aik.py dashboard` writes
+`aik-history/dashboard.json` and `dashboard.html`, a standalone local report with
+level, delta vs champion/anchor, slope, regressions, evaluator scores, coverage, and a
+full timeline — coverage growth is never presented as quality improvement, and an
+incompatible cohort never produces a fabricated delta. Read
+`references/history-dashboard.md` for the full command reference, comparability
+rules, metric formulas, and security notes.
 
 ## Evaluation Rules
 

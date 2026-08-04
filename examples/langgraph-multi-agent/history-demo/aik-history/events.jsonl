@@ -1,0 +1,2 @@
+{"event_id": "sha256:9f9904ff3be4fa1f1bcf2e79987cd2d6c4f7f0e0d049b5df51ba78ee0dd4c3bc", "human_decision": null, "previous_champion_run_id": null, "recorded_at": "2026-08-04T14:07:03.104066+00:00", "run_id": "20260804T140703Z-dac8094c", "type": "anchor_initialized"}
+{"event_id": "sha256:e462ebb721969c3461378ed49bf6ed1afcb0f10cefda267e8661eaa7efd030a6", "human_decision": "accepted", "previous_champion_run_id": "20260804T140703Z-dac8094c", "recorded_at": "2026-08-04T14:07:03.239169+00:00", "run_id": "20260804T140703Z-3608f8f6", "type": "champion_promoted"}

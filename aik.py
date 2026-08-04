@@ -15,13 +15,23 @@ SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from common import DataError  # noqa: E402
+from common import DataError, write_json  # noqa: E402
 from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
 from validate_case import validate  # noqa: E402
+from history import (  # noqa: E402
+    history_init,
+    history_list,
+    history_promote,
+    history_record,
+    history_validate,
+    parse_metadata,
+)
+from dashboard_model import build_dashboard  # noqa: E402
+from render_dashboard import render_dashboard  # noqa: E402
 
 
 def _print_summary(result: dict) -> None:
@@ -97,6 +107,42 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     promote_parser.add_argument("--ids", nargs="*")
+
+    history_parser = commands.add_parser("history", help="Manage immutable champion history")
+    history_commands = history_parser.add_subparsers(dest="history_command", required=True)
+
+    history_init_parser = history_commands.add_parser("init", help="Archive the first anchor/champion run")
+    history_init_parser.add_argument("case_dir")
+    history_init_parser.add_argument("--stage", default="baseline")
+    history_init_parser.add_argument("--label", required=True)
+    history_init_parser.add_argument("--agent-version", required=True)
+    history_init_parser.add_argument("--history-root", default="aik-history")
+    history_init_parser.add_argument("--metadata", action="append", default=[])
+
+    history_record_parser = history_commands.add_parser("record", help="Archive a candidate or cohort anchor run")
+    history_record_parser.add_argument("case_dir")
+    history_record_parser.add_argument("--stage", required=True, choices=("baseline", "candidate"))
+    history_record_parser.add_argument("--label", required=True)
+    history_record_parser.add_argument("--agent-version", required=True)
+    history_record_parser.add_argument("--role", default="candidate", choices=("candidate", "cohort_anchor"))
+    history_record_parser.add_argument("--history-root", default="aik-history")
+    history_record_parser.add_argument("--metadata", action="append", default=[])
+
+    history_promote_parser = history_commands.add_parser("promote", help="Promote an archived candidate to champion")
+    history_promote_parser.add_argument("run_id")
+    history_promote_parser.add_argument("--history-root", default="aik-history")
+
+    history_list_parser = history_commands.add_parser("list", help="List archived history runs")
+    history_list_parser.add_argument("--history-root", default="aik-history")
+
+    history_validate_parser = history_commands.add_parser("validate", help="Validate history integrity")
+    history_validate_parser.add_argument("--history-root", default="aik-history")
+
+    dashboard_parser = commands.add_parser("dashboard", help="Generate the local champion-history dashboard")
+    dashboard_parser.add_argument("--history-root", default="aik-history")
+    dashboard_parser.add_argument("--output", default=None, help="Alternate path for dashboard.html")
+    dashboard_parser.add_argument("--candidate", default=None, dest="candidate_run_id")
+    dashboard_parser.add_argument("--open", action="store_true")
     return parser
 
 
@@ -175,6 +221,79 @@ def main(argv: list[str] | None = None) -> int:
             for case_id in promoted:
                 print(case_id)
             return 0
+
+        if args.command == "history":
+            if args.history_command == "init":
+                manifest = history_init(
+                    args.case_dir,
+                    history_root=args.history_root,
+                    stage=args.stage,
+                    label=args.label,
+                    agent_version=args.agent_version,
+                    metadata=parse_metadata(args.metadata),
+                )
+                print(f"run_id={manifest['run_id']}")
+                print(f"pass_rate={manifest['pass_rate']}")
+                print(f"cohort_id={manifest['cohort_id']}")
+                return 0
+            if args.history_command == "record":
+                manifest = history_record(
+                    args.case_dir,
+                    history_root=args.history_root,
+                    stage=args.stage,
+                    label=args.label,
+                    agent_version=args.agent_version,
+                    role=args.role,
+                    metadata=parse_metadata(args.metadata),
+                )
+                print(f"run_id={manifest['run_id']}")
+                print(f"role={manifest['role']}")
+                print(f"pass_rate={manifest['pass_rate']}")
+                return 0
+            if args.history_command == "promote":
+                result = history_promote(args.run_id, history_root=args.history_root)
+                print(f"champion_run_id={result['champion_run_id']}")
+                return 0
+            if args.history_command == "list":
+                rows = history_list(args.history_root)
+                for row in rows:
+                    markers = " ".join(
+                        filter(None, ["ANCHOR" if row["is_anchor"] else "", "CHAMPION" if row["is_champion"] else ""])
+                    )
+                    pass_rate = "N/A" if row["pass_rate"] is None else f"{row['pass_rate']:.3f}"
+                    print(
+                        f"{row['run_id']}  {row['role']:<13} {row['agent_version']:<16} "
+                        f"{row['cohort_prefix']:<10} pass_rate={pass_rate}  {markers}"
+                    )
+                return 0
+            if args.history_command == "validate":
+                errors, warnings = history_validate(args.history_root)
+                for warning in warnings:
+                    print(f"WARNING: {warning}")
+                for error in errors:
+                    print(f"ERROR: {error}")
+                if errors:
+                    return 1
+                print("VALID")
+                return 0
+
+        if args.command == "dashboard":
+            dashboard = build_dashboard(args.history_root, candidate_run_id=args.candidate_run_id)
+            history_root = Path(args.history_root).resolve()
+            history_root.mkdir(parents=True, exist_ok=True)
+            json_path = write_json(history_root / "dashboard.json", dashboard)
+            html_path = render_dashboard(dashboard, args.output or (history_root / "dashboard.html"))
+            print(f"dashboard_json={json_path}")
+            print(f"dashboard_html={html_path}")
+            integrity = dashboard.get("integrity", {})
+            if not integrity.get("valid", True):
+                for error in integrity.get("errors", []):
+                    print(f"ERROR: {error}", file=sys.stderr)
+            if args.open:
+                import webbrowser
+
+                webbrowser.open(Path(html_path).resolve().as_uri())
+            return 0 if integrity.get("valid", True) else 2
     except (DataError, FileNotFoundError, json.JSONDecodeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

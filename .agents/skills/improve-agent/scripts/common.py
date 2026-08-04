@@ -32,6 +32,16 @@ def fingerprint(value: Any) -> str:
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def hash_file(path: str | Path) -> str:
+    """Return the sha256 content hash of a regular file's raw bytes."""
+    file_path = Path(path)
+    digest = hashlib.sha256()
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return "sha256:" + digest.hexdigest()
+
+
 def read_jsonl(path: str | Path, id_field: str) -> list[dict[str, Any]]:
     file_path = Path(path)
     if not file_path.exists():
