@@ -4,6 +4,17 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+*.pem
+*.key
 dist/
 build/
 *.egg-info/

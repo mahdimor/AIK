@@ -1,8 +1,42 @@
 # AIK — Agent Improvement Kit
 
+[![CI](https://github.com/mahdimor/AIK/actions/workflows/ci.yml/badge.svg)](https://github.com/mahdimor/AIK/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+
+> **Project status:** experimental `v0.5.0`. AIK is usable for local evaluation
+> workflows, but its statistical gates are supporting evidence—not a sole
+> production-release criterion. File formats and CLI details may change before
+> `v1.0`.
+
 AIK is a small, local-first Agent Skill that turns an AI-agent failure into governed test data, independently evaluated before/after evidence, an explicit acceptance recommendation, and a permanent regression test.
 
 It is not a hosted observability platform and does not embed an agent SDK. The core executes project-owned runners, applies deterministic evaluators, delegates optional semantic judgment through a provider-neutral subprocess protocol, and enforces acceptance gates. No cloud account, database, framework SDK, or third-party Python dependency is required by AIK core.
+
+## Why AIK
+
+Agent changes are easy to ship and hard to prove. AIK keeps the failure, baseline,
+candidate, evaluator configuration, acceptance policy, repeated trials, human
+decision, and promoted regression cases together as reviewable files. It complements
+observability and optimization tools; it does not replace production monitoring,
+real user feedback, or release ownership.
+
+## Install
+
+AIK core is source-distributed and uses only the Python standard library:
+
+```bash
+git clone https://github.com/mahdimor/AIK.git
+cd AIK
+python aik.py --version
+python aik.py demo
+```
+
+To use only the portable Agent Skill, copy
+`.agents/skills/improve-agent/` into a repository that supports the Agent Skills
+layout. The CLI remains available for hosts that do not discover skills. AIK does
+not require Azure, OpenAI, LangGraph, Langfuse, or any other provider; the LangGraph
+and OpenAI integrations are optional examples.
 
 ## Try it in one command
 
@@ -201,5 +235,10 @@ python aik.py history validate
 python aik.py dashboard
 python aik.py --version
 ```
+
+Before contributing, read [CONTRIBUTING.md](CONTRIBUTING.md). For usage questions,
+see [SUPPORT.md](SUPPORT.md); report vulnerabilities according to
+[SECURITY.md](SECURITY.md). Releases and notable changes are recorded in
+[CHANGELOG.md](CHANGELOG.md).
 
 MIT licensed. Python 3.10+.

@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose a focused improvement to AIK
+title: "[Feature]: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the agent-improvement workflow that is currently difficult or impossible.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed capability
+      description: Define the minimum useful behavior, inputs, outputs, and acceptance criteria.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Dataset and evaluation
+        - Runner or adapter
+        - Review and acceptance
+        - Reliability statistics
+        - History and dashboard
+        - Agent Skill workflow
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing AIK workflow or open-source tool that partly addresses the need.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Project boundaries
+      options:
+        - label: The proposal can remain provider- and framework-agnostic in AIK core.
+          required: true
+        - label: I understand AIK is pre-1.0 and maintainers may narrow or defer the scope.
+          required: true
