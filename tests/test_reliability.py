@@ -25,9 +25,12 @@ from reliability import (  # noqa: E402
     dataset_health,
     evaluator_stats,
     find_incompatible_evaluators,
+    hierarchical_bootstrap_delta,
     mean_and_stdev,
     paired_case_deltas,
+    paired_observations_by_case,
     reliability_acceptance,
+    resolve_config,
     run_reliability,
     wilson_interval,
 )
@@ -501,8 +504,12 @@ class HistoryReliabilityArchivingTests(unittest.TestCase):
 
     def test_statistically_uncertain_candidate_does_not_become_champion(self) -> None:
         # Deterministically eligible on the single archived run (both pass), but
-        # the repeated trials show the candidate failing consistently: statistics
-        # must veto promotion even though the one-shot comparison looked fine.
+        # the repeated trials show the candidate mostly failing (only the one
+        # repetition consistent with the single run passes): statistics must
+        # veto promotion even though the one-shot comparison looked fine. This
+        # is genuine flakiness, not a wholesale mismatch with the single run
+        # (which is a separate, stricter tamper check — see
+        # test_archived_reliability_tampering_is_detected and friends).
         case_dir = self._prepare_case(
             "reliab-d",
             baseline_single={"c1": ["a"], "c2": ["a"]},
@@ -511,12 +518,400 @@ class HistoryReliabilityArchivingTests(unittest.TestCase):
             candidate_trials={"c1": [], "c2": []},
             repetitions=5,
         )
+        # Make the candidate trials genuinely flaky rather than flatly
+        # contradicting the single-run verdict: one repetition per case
+        # matches the single run's "pass", the rest fail.
+        candidate_trials_path = case_dir / "candidate.trials.raw.jsonl"
+        candidate_trials = read_jsonl(candidate_trials_path, "observation_id")
+        for record in candidate_trials:
+            if record["repetition"] == 0:
+                record["agents"] = ["a"]
+        write_jsonl(candidate_trials_path, candidate_trials)
+        evaluate_trials(case_dir, "candidate", overwrite=True)
+        reliability = run_reliability(case_dir)
+        write_json(case_dir / "reliability.json", reliability)
+        build_review(case_dir)
+
         history_root = self.root / "aik-history"
         history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
         candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
         self.assertNotEqual(candidate["acceptance_recommendation"], "eligible")
         with self.assertRaises(DataError):
             history_promote(candidate["run_id"], history_root=history_root)
+
+
+class ReviewFixAdversarialTests(unittest.TestCase):
+    """The 11 adversarial/regression tests required by the independent Sprint 6
+    review: repeated evaluator errors, reliability bound to real trials,
+    hierarchical bootstrap uncertainty, and strictly optional statistics."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def _prepare_case(
+        self,
+        name: str,
+        *,
+        baseline_single: dict[str, list[str]],
+        candidate_single: dict[str, list[str]],
+        baseline_trials: dict[str, list[str]],
+        candidate_trials: dict[str, list[str]],
+        repetitions: int = 5,
+        reliability_config: dict | None = None,
+        decision: str = "accepted",
+        write_reliability: bool = True,
+        cases: list[dict] | None = None,
+    ) -> Path:
+        case_dir = initialize(name, self.root / "improvements")
+        write_jsonl(case_dir / "test_cases.jsonl", cases if cases is not None else _HISTORY_CASES)
+        write_json(
+            case_dir / "evaluation.json",
+            {
+                "format_version": "1.0",
+                "suite_id": f"{name}-suite",
+                "version": "1.0.0",
+                "evaluators": _HISTORY_EVALUATORS,
+                "acceptance": {
+                    "reject_on_evaluator_error": True,
+                    "no_regression_at_or_above_risk": "high",
+                    "critical_cases_must_pass": True,
+                    "maximum_regressions": 0,
+                    "minimum_candidate_pass_rate": 0.0,
+                    "minimum_delta": 0.0,
+                },
+                "reliability": reliability_config
+                or {
+                    "minimum_repetitions": 3,
+                    "confidence_level": 0.95,
+                    "bootstrap_samples": 500,
+                    "minimum_probability_of_improvement": 0.9,
+                    "maximum_flaky_case_rate": 1.0,
+                },
+            },
+        )
+        write_jsonl(case_dir / "baseline.raw.jsonl", _raw_single(baseline_single))
+        write_jsonl(case_dir / "candidate.raw.jsonl", _raw_single(candidate_single))
+        evaluate(case_dir, "baseline", overwrite=True)
+        evaluate(case_dir, "candidate", overwrite=True)
+        write_jsonl(case_dir / "baseline.trials.raw.jsonl", _raw_trials(baseline_trials, repetitions))
+        write_jsonl(case_dir / "candidate.trials.raw.jsonl", _raw_trials(candidate_trials, repetitions))
+        evaluate_trials(case_dir, "baseline", overwrite=True)
+        evaluate_trials(case_dir, "candidate", overwrite=True)
+        if write_reliability:
+            reliability = run_reliability(case_dir)
+            write_json(case_dir / "reliability.json", reliability)
+            build_review(case_dir)
+        (case_dir / "decision.yaml").write_text(f"status: {decision}\n", encoding="utf-8")
+        return case_dir
+
+    # 1. One valid result + two evaluator errors does not satisfy minimum_repetitions=3.
+    def test_one_valid_plus_two_evaluator_errors_fails_minimum_repetitions(self) -> None:
+        def obs(case_id: str, repetition: int, status: str, stage: str) -> dict:
+            passed = True if status == "pass" else (False if status == "fail" else None)
+            return {
+                "case_id": case_id,
+                "repetition": repetition,
+                "observation_id": observation_id_for(case_id, repetition),
+                "passed": passed,
+                "verdict": status if status in ("pass", "fail") else "manual_review",
+                "evaluations": [{"evaluator_id": "judge", "evaluator_version": "1", "status": status}],
+                "evaluation_metadata": {"stage": stage, "dataset_fingerprint": "sha256:d", "evaluator_fingerprint": "sha256:e"},
+            }
+
+        baseline = [obs("c1", r, "pass", "baseline") for r in range(3)]
+        candidate = [obs("c1", 0, "pass", "candidate"), obs("c1", 1, "error", "candidate"), obs("c1", 2, "error", "candidate")]
+        evaluators = [{"id": "judge", "type": "llm_rubric", "required": True}]
+        config = {
+            "minimum_repetitions": 3,
+            "confidence_level": 0.95,
+            "bootstrap_samples": 200,
+            "minimum_probability_of_improvement": 0.5,
+            "maximum_flaky_case_rate": 1.0,
+        }
+        report = build_reliability([{"id": "c1"}], baseline, candidate, config=config, evaluators=evaluators, seed=1)
+        self.assertEqual(report["stages"]["candidate"]["cases"]["c1"]["boolean_observations"], 1)
+        self.assertEqual(report["stages"]["candidate"]["cases"]["c1"]["required_evaluator_error_observations"], 2)
+        acceptance = reliability_acceptance(report, reject_on_evaluator_error=True)
+        self.assertEqual(acceptance["recommendation"], "manual_review")
+        self.assertNotEqual(acceptance["recommendation"], "eligible")
+
+    def test_repeated_evaluator_errors_block_promotion_end_to_end(self) -> None:
+        evaluators = [
+            {"id": "execution-ok", "type": "no_execution_error", "required": True},
+            {"id": "quality", "type": "llm_rubric", "required": True, "threshold": 0.7},
+        ]
+        cases = [dict(case, expected={**case["expected"], "rubric": ["ok"]}) for case in _HISTORY_CASES]
+        config = {
+            "minimum_repetitions": 3,
+            "confidence_level": 0.95,
+            "bootstrap_samples": 200,
+            "minimum_probability_of_improvement": 0.5,
+            "maximum_flaky_case_rate": 1.0,
+        }
+        # No judge command is supplied, so every required "quality" evaluation
+        # errors: every repeated observation is manual_review, not a boolean.
+        case_dir = self._prepare_case(
+            "errors-block",
+            baseline_single={"c1": ["a"], "c2": ["a"]},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": ["a"], "c2": ["a"]},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+            reliability_config=config,
+            cases=cases,
+        )
+        # Rewrite the suite's evaluators to include the always-erroring judge
+        # for the trial evidence (the single-run evaluate() call above used
+        # the default deterministic evaluators only).
+        suite = read_json(case_dir / "evaluation.json")
+        suite["evaluators"] = evaluators
+        write_json(case_dir / "evaluation.json", suite)
+        write_jsonl(case_dir / "baseline.trials.raw.jsonl", _raw_trials({"c1": ["a"], "c2": ["a"]}, 5))
+        write_jsonl(case_dir / "candidate.trials.raw.jsonl", _raw_trials({"c1": ["a"], "c2": ["a"]}, 5))
+        evaluate_trials(case_dir, "baseline", overwrite=True)
+        evaluate_trials(case_dir, "candidate", overwrite=True)
+        write_jsonl(case_dir / "baseline.raw.jsonl", _raw_single({"c1": ["a"], "c2": ["a"]}))
+        write_jsonl(case_dir / "candidate.raw.jsonl", _raw_single({"c1": ["a"], "c2": ["a"]}))
+        evaluate(case_dir, "baseline", overwrite=True)
+        evaluate(case_dir, "candidate", overwrite=True)
+        reliability = run_reliability(case_dir)
+        write_json(case_dir / "reliability.json", reliability)
+        build_review(case_dir)
+
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+        self.assertNotEqual(candidate["acceptance_recommendation"], "eligible")
+        with self.assertRaises(DataError):
+            history_promote(candidate["run_id"], history_root=history_root)
+
+    # 2. A reliability.json without trials cannot be archived or promoted.
+    def test_reliability_json_without_trials_cannot_be_archived(self) -> None:
+        case_dir = self._prepare_case(
+            "no-trials",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+        )
+        (case_dir / "baseline.trials.evaluated.jsonl").unlink()
+        (case_dir / "candidate.trials.evaluated.jsonl").unlink()
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        with self.assertRaises(DataError):
+            history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+
+    # 3. A manually fabricated favorable reliability.json cannot be promoted.
+    def test_fabricated_favorable_reliability_json_cannot_be_archived(self) -> None:
+        case_dir = self._prepare_case(
+            "fabricated",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": [], "c2": []},  # genuinely weak candidate trials
+        )
+        # Overwrite the honestly computed (weak) reliability.json with a
+        # hand-fabricated, favorable one that does not match the real trials.
+        fabricated = read_json(case_dir / "reliability.json")
+        fabricated["comparison"]["probability_of_improvement"] = 0.99
+        fabricated["comparison"]["pass_rate_delta"] = 0.9
+        fabricated["comparison"]["bootstrap"] = {"ci_low": 0.8, "ci_high": 1.0}
+        write_json(case_dir / "reliability.json", fabricated)
+
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        with self.assertRaises(DataError):
+            history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+
+    # 4. A report (and trials) copied from another candidate is rejected.
+    def test_reliability_report_copied_from_another_candidate_is_rejected(self) -> None:
+        source_case = self._prepare_case(
+            "source-good",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+        )
+        target_case = self._prepare_case(
+            "target-bad",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": [], "c2": []},  # the real candidate actually fails
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": [], "c2": []},
+        )
+        # Borrow the source's favorable trials and reliability.json wholesale.
+        import shutil
+
+        for name in ("candidate.trials.evaluated.jsonl", "baseline.trials.evaluated.jsonl", "reliability.json"):
+            shutil.copy2(source_case / name, target_case / name)
+
+        history_root = self.root / "aik-history"
+        history_init(target_case, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        with self.assertRaises(DataError):
+            history_record(target_case, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+
+    # 5. Modifying archived trials after recording is detected.
+    def test_modifying_archived_trials_after_recording_is_detected(self) -> None:
+        case_dir = self._prepare_case(
+            "post-tamper-trials",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+        )
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+
+        run_dir = history_root / "runs" / candidate["run_id"]
+        trials_path = run_dir / "candidate.trials.evaluated.jsonl"
+        with trials_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n")
+        problems = verify_run_integrity(history_root, candidate["run_id"])
+        self.assertTrue(any("candidate.trials.evaluated.jsonl" in p and "modified" in p for p in problems))
+        with self.assertRaises(DataError):
+            history_promote(candidate["run_id"], history_root=history_root)
+
+    # 6. Modifying the archived reliability configuration after recording is detected.
+    def test_modifying_archived_reliability_config_after_recording_is_detected(self) -> None:
+        case_dir = self._prepare_case(
+            "post-tamper-config",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+        )
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+
+        run_dir = history_root / "runs" / candidate["run_id"]
+        suite_path = run_dir / "evaluation.json"
+        suite = read_json(suite_path)
+        suite["reliability"]["minimum_probability_of_improvement"] = 0.0
+        write_json(suite_path, suite)
+        problems = verify_run_integrity(history_root, candidate["run_id"])
+        self.assertTrue(problems)
+        with self.assertRaises(DataError):
+            history_promote(candidate["run_id"], history_root=history_root)
+
+    # 7. The 1/3 vs 2/3 single-case scenario remains uncertain, not 100% confidence.
+    def test_single_case_one_third_vs_two_thirds_remains_uncertain(self) -> None:
+        def obs(case_id: str, repetition: int, passed: bool, stage: str) -> dict:
+            return {
+                "case_id": case_id,
+                "repetition": repetition,
+                "observation_id": observation_id_for(case_id, repetition),
+                "passed": passed,
+                "verdict": "pass" if passed else "fail",
+                "evaluations": [{"evaluator_id": "q", "evaluator_version": "1", "status": "pass" if passed else "fail"}],
+                "evaluation_metadata": {"stage": stage, "dataset_fingerprint": "sha256:d", "evaluator_fingerprint": "sha256:e"},
+            }
+
+        baseline = [obs("c1", r, r == 2, "baseline") for r in range(3)]  # 1/3 pass
+        candidate = [obs("c1", r, r in (0, 2), "candidate") for r in range(3)]  # 2/3 pass
+        report = build_reliability([{"id": "c1"}], baseline, candidate, seed=1337)
+        comparison = report["comparison"]
+        self.assertEqual(comparison["paired_cases"], 1)
+        self.assertEqual(comparison["paired_observations"], 3)
+        self.assertAlmostEqual(comparison["pass_rate_delta"], 1 / 3, places=3)
+        # The old (flawed) method fabricated P == 1.0 and a zero-width CI.
+        self.assertLess(comparison["probability_of_improvement"], 0.95)
+        self.assertGreater(comparison["probability_of_improvement"], 0.3)
+        self.assertNotEqual(comparison["bootstrap"]["ci_low"], comparison["bootstrap"]["ci_high"])
+        acceptance = reliability_acceptance(
+            {**report, "config": {**report["config"], "minimum_probability_of_improvement": 0.9}}
+        )
+        self.assertNotEqual(acceptance["recommendation"], "eligible")
+
+    def test_single_case_order_independence_with_repetitions(self) -> None:
+        def obs(case_id: str, repetition: int, passed: bool, stage: str) -> dict:
+            return {
+                "case_id": case_id,
+                "repetition": repetition,
+                "observation_id": observation_id_for(case_id, repetition),
+                "passed": passed,
+                "verdict": "pass" if passed else "fail",
+                "evaluations": [{"evaluator_id": "q", "evaluator_version": "1", "status": "pass" if passed else "fail"}],
+                "evaluation_metadata": {"stage": stage, "dataset_fingerprint": "sha256:d", "evaluator_fingerprint": "sha256:e"},
+            }
+
+        baseline = (
+            [obs("c1", r, r % 2 == 0, "baseline") for r in range(4)]
+            + [obs("c2", r, r < 1, "baseline") for r in range(4)]
+        )
+        candidate = (
+            [obs("c1", r, r < 3, "candidate") for r in range(4)]
+            + [obs("c2", r, r % 2 == 0, "candidate") for r in range(4)]
+        )
+        cases = [{"id": "c1"}, {"id": "c2"}]
+        forward = build_reliability(cases, baseline, candidate, seed=42)
+        backward = build_reliability(cases, list(reversed(baseline)), list(reversed(candidate)), seed=42)
+        shuffled = build_reliability(cases, baseline[::2] + baseline[1::2], candidate[1::2] + candidate[::2], seed=42)
+        self.assertEqual(forward["comparison"], backward["comparison"])
+        self.assertEqual(forward["comparison"], shuffled["comparison"])
+
+    # 8. An old reliability.json is ignored when no reliability section is configured.
+    def test_stale_reliability_ignored_without_configured_section(self) -> None:
+        case_dir = self._prepare_case(
+            "stale-ignored",
+            baseline_single={"c1": [], "c2": []},
+            candidate_single={"c1": ["a"], "c2": ["a"]},
+            baseline_trials={"c1": [], "c2": []},
+            candidate_trials={"c1": ["a"], "c2": ["a"]},
+        )
+        # A stale, favorable reliability.json sits on disk, but the section is
+        # removed from evaluation.json before generating the review.
+        suite = read_json(case_dir / "evaluation.json")
+        del suite["reliability"]
+        write_json(case_dir / "evaluation.json", suite)
+
+        _comparison_path, _review_path, result = build_review(case_dir)
+        self.assertNotIn("statistical_reliability", result["acceptance"])
+        self.assertEqual(result["acceptance"]["recommendation"], "eligible")
+
+    # 9. Invalid reliability configuration always raises DataError, never a
+    # ZeroDivisionError, KeyError, or IndexError.
+    def test_invalid_reliability_config_values_raise_data_error(self) -> None:
+        base = {
+            "minimum_repetitions": 3,
+            "confidence_level": 0.95,
+            "bootstrap_samples": 500,
+            "minimum_probability_of_improvement": 0.9,
+            "maximum_flaky_case_rate": 0.5,
+        }
+        invalid_overrides = [
+            {"bootstrap_samples": 0},
+            {"bootstrap_samples": 99},
+            {"minimum_repetitions": -1},
+            {"minimum_repetitions": 0},
+            {"minimum_probability_of_improvement": 2},
+            {"minimum_probability_of_improvement": -0.1},
+            {"maximum_flaky_case_rate": -1},
+            {"maximum_flaky_case_rate": 1.5},
+            {"confidence_level": 1.0},
+            {"confidence_level": 0.0},
+            {"seed": True},
+            {"seed": 1.5},
+            {"minimum_repetitions": True},
+        ]
+        for override in invalid_overrides:
+            with self.subTest(override=override):
+                config = {**base, **override}
+                with self.assertRaises(DataError):
+                    resolve_config(config)
+
+    def test_zero_bootstrap_samples_never_raises_zero_division(self) -> None:
+        # Even calling the low-level bootstrap function directly with a bad
+        # sample count must raise DataError, not a raw ZeroDivisionError.
+        with self.assertRaises(DataError):
+            hierarchical_bootstrap_delta({"c1": [(True, True)]}, samples=0, confidence_level=0.95, seed=1)
+
+    # 10 & 11 (one-shot unchanged, existing suite green) are exercised by the
+    # full test run: tests/test_workflow.py and the rest of this module.
 
 
 class RepeatedExecutionTests(unittest.TestCase):

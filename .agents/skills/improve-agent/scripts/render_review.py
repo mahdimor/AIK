@@ -38,15 +38,22 @@ def _fmt_pp(value: float | None) -> str:
     return f"{sign}{scaled:.1f}pp"
 
 
-def _reliability_panel(comparison: dict[str, Any], reliability: dict[str, Any] | None) -> str:
+def _reliability_panel(
+    comparison: dict[str, Any],
+    reliability: dict[str, Any] | None,
+    *,
+    status_message: str | None = None,
+) -> str:
     """Statistical reliability panel. Never fabricates a confidence interval or
     probability when the underlying evidence does not support one."""
     if reliability is None:
+        message = status_message or (
+            "Statistical confidence is unavailable from a single observation. Run with "
+            "--repetitions N, then aik evaluate --trials and aik reliability, to measure repeatability."
+        )
         return (
             '<div class="recommend reliability"><h3>Reliability: one run only</h3>'
-            "Statistical confidence is unavailable from a single observation. Run with "
-            "<code>--repetitions N</code>, then <code>aik evaluate --trials</code> and "
-            "<code>aik reliability</code>, to measure repeatability.</div>"
+            f"{html.escape(message)}</div>"
         )
 
     stages = reliability.get("stages", {})
@@ -172,13 +179,15 @@ def render(
     case_yaml_path: str | Path,
     output_path: str | Path,
     reliability: dict[str, Any] | None = None,
+    *,
+    reliability_status_message: str | None = None,
 ) -> Path:
     comparison = json.loads(Path(comparison_path).read_text(encoding="utf-8"))
     summary = comparison["summary"]
     case = _simple_yaml_values(Path(case_yaml_path))
     acceptance = comparison.get("acceptance")
     recommendation, reason = _recommend(summary, acceptance)
-    reliability_html = _reliability_panel(comparison, reliability)
+    reliability_html = _reliability_panel(comparison, reliability, status_message=reliability_status_message)
     css_path = Path(__file__).resolve().parent.parent / "assets" / "review.css"
     css = css_path.read_text(encoding="utf-8")
 

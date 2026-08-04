@@ -1,6 +1,6 @@
 {
   "format_version": "1.0",
-  "generated_at": "2026-08-04T18:43:07.716210+00:00",
+  "generated_at": "2026-08-04T20:05:54.577665+00:00",
   "inputs": {
     "test_cases": "test_cases.jsonl",
     "baseline": "baseline.evaluated.jsonl",
@@ -20,7 +20,7 @@
     "recommendation": "manual_review",
     "reasons": [
       "All configured acceptance gates passed",
-      "Probability of improvement 0.749 is below the configured threshold 0.900"
+      "Probability of improvement 0.494 is below the configured threshold 0.900"
     ],
     "metrics": {
       "baseline_pass_rate": 0.5,
@@ -39,14 +39,15 @@
     "statistical_reliability": {
       "recommendation": "manual_review",
       "reasons": [
-        "Probability of improvement 0.749 is below the configured threshold 0.900"
+        "Probability of improvement 0.494 is below the configured threshold 0.900"
       ],
       "paired_cases": 2,
-      "probability_of_improvement": 0.749,
+      "paired_observations": 12,
+      "probability_of_improvement": 0.4936,
       "pass_rate_delta": 0.083333,
       "bootstrap_ci": [
-        0.0,
-        0.166666
+        -0.166667,
+        0.416667
       ],
       "flaky_cases": [
         "intermittent-billing-routing"
@@ -118,7 +119,7 @@
           }
         ],
         "execution": {
-          "duration_ms": 69,
+          "duration_ms": 65,
           "exit_code": 0
         },
         "output": "baseline:stable-greeting:repetition-0",
@@ -179,7 +180,7 @@
           }
         ],
         "execution": {
-          "duration_ms": 70,
+          "duration_ms": 104,
           "exit_code": 0
         },
         "output": "candidate:stable-greeting:repetition-0",
@@ -261,7 +262,7 @@
           }
         ],
         "execution": {
-          "duration_ms": 70,
+          "duration_ms": 66,
           "exit_code": 0
         },
         "output": "baseline:intermittent-billing-routing:repetition-0",
@@ -326,7 +327,7 @@
           }
         ],
         "execution": {
-          "duration_ms": 71,
+          "duration_ms": 69,
           "exit_code": 0
         },
         "output": "candidate:intermittent-billing-routing:repetition-0",

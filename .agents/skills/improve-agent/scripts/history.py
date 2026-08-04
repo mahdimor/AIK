@@ -19,7 +19,14 @@ from pathlib import Path
 from typing import Any
 
 from common import DataError, fingerprint, hash_file, read_json, read_jsonl, write_json, write_jsonl
-from reliability import reliability_acceptance
+from reliability import (
+    DEFAULT_SEED,
+    attach_trial_hashes,
+    build_reliability,
+    reliability_acceptance,
+    reliability_reports_equal,
+    validate_stage_records,
+)
 from validate_case import validate as validate_case_artifacts
 
 
@@ -27,7 +34,8 @@ FORMAT_VERSION = "1.0"
 ROLES = {"anchor", "candidate", "champion", "cohort_anchor"}
 ARCHIVABLE_ROLES = {"anchor", "candidate", "cohort_anchor"}
 ACCEPTED_DECISIONS = {"accepted", "accepted_with_conditions"}
-ARCHIVE_OPTIONAL = ("comparison.json", "decision.yaml", "review.html", "reliability.json")
+ARCHIVE_OPTIONAL = ("comparison.json", "decision.yaml", "review.html")
+RELIABILITY_ARTIFACTS = ("reliability.json", "baseline.trials.evaluated.jsonl", "candidate.trials.evaluated.jsonl")
 _RUN_ID_PATTERN = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
 
 
@@ -191,7 +199,7 @@ def _guard_case_outside_history_root(history_root_resolved: Path, case_dir_resol
     raise DataError("Refusing to record a case directory that resolves inside the history root")
 
 
-def _collect_source_artifacts(case_dir: Path, stage: str) -> dict[str, Path]:
+def _collect_source_artifacts(case_dir: Path, stage: str, role: str) -> dict[str, Path]:
     errors, _warnings = validate_case_artifacts(case_dir)
     if errors:
         raise DataError("Source case failed Sprint 4 validation: " + "; ".join(errors))
@@ -211,6 +219,27 @@ def _collect_source_artifacts(case_dir: Path, stage: str) -> dict[str, Path]:
         source = case_dir / name
         if source.exists() and source.stat().st_size:
             files[name] = source
+
+    # Statistics are truly optional (Fix 4): only a `reliability` section in
+    # evaluation.json makes the trial evidence mandatory, and only for a
+    # candidate (an anchor or cohort anchor has no baseline/candidate pair to
+    # compare). A favorable reliability.json can never be archived without
+    # the trials that produced it.
+    suite = read_json(case_dir / "evaluation.json")
+    reliability_config = suite.get("reliability") if isinstance(suite.get("reliability"), dict) else None
+    if reliability_config is not None and role == "candidate":
+        missing = [
+            name for name in RELIABILITY_ARTIFACTS if not (case_dir / name).exists() or not (case_dir / name).stat().st_size
+        ]
+        if missing:
+            raise DataError(
+                "A 'reliability' section is configured in evaluation.json; missing required trial evidence "
+                f"for recording: {', '.join(missing)}. Run 'aik run --repetitions N', 'aik evaluate --trials', "
+                "and 'aik reliability' first."
+            )
+        for name in RELIABILITY_ARTIFACTS:
+            files[name] = case_dir / name
+
     for name, source in files.items():
         if source.is_symlink():
             raise DataError(f"Refusing to archive symlink: {name}")
@@ -245,6 +274,102 @@ def _stage_metrics(evaluated_records: list[dict[str, Any]]) -> dict[str, Any]:
     return {"case_count": len(evaluated_records), "passed": passed, "failed": failed, "manual_review": manual, "pass_rate": pass_rate}
 
 
+def _verify_trials_consistency(single_run_records: list[dict[str, Any]], trial_records: list[dict[str, Any]]) -> list[str]:
+    """Soft consistency check: a case's single-run verdict must occur at least
+    once among its own repeated trial observations. Catches trials borrowed
+    wholesale from a different candidate's evidence (same dataset, different
+    agent), which a fingerprint-only check cannot distinguish."""
+    trial_verdicts_by_case: dict[str, set[bool]] = {}
+    for record in trial_records:
+        passed = record.get("passed")
+        if isinstance(passed, bool):
+            trial_verdicts_by_case.setdefault(record.get("case_id"), set()).add(passed)
+
+    problems: list[str] = []
+    for record in single_run_records:
+        case_id = record.get("case_id")
+        passed = record.get("passed")
+        if not isinstance(passed, bool) or case_id not in trial_verdicts_by_case:
+            continue
+        if passed not in trial_verdicts_by_case[case_id]:
+            problems.append(
+                f"case '{case_id}': the single-run verdict ({passed}) never occurs among its own repeated trial "
+                "observations; the trials may not belong to this candidate"
+            )
+    return problems
+
+
+def _verify_reliability_evidence(
+    *,
+    reliability_path: Path,
+    baseline_trials_path: Path,
+    candidate_trials_path: Path,
+    test_cases_path: Path,
+    evaluation_path: Path,
+    single_run_evaluated_path: Path,
+    manifest_dataset_fingerprint: str,
+    manifest_evaluator_fingerprint: str,
+) -> list[str]:
+    """Recompute the statistical report from trial evidence and prove it
+    matches the archived (or about-to-be-archived) reliability.json, using
+    only the archived seed and config — never fabricating new statistics.
+
+    Catches: a reliability.json with no matching trials, a report copied
+    from another candidate, trials/config edited after the report was
+    computed, and a report computed under a different reliability config.
+    """
+    problems: list[str] = []
+    for path in (reliability_path, baseline_trials_path, candidate_trials_path):
+        if not path.exists() or not path.stat().st_size:
+            problems.append(f"missing required reliability evidence: {path.name}")
+    if problems:
+        return problems
+
+    try:
+        test_cases = read_jsonl(test_cases_path, "id")
+        known_case_ids = {case["id"] for case in test_cases}
+        evaluation_suite = read_json(evaluation_path)
+        archived_reliability = read_json(reliability_path)
+        baseline_trials = read_jsonl(baseline_trials_path, "observation_id")
+        candidate_trials = read_jsonl(candidate_trials_path, "observation_id")
+        single_run_evaluated = read_jsonl(single_run_evaluated_path, "case_id")
+
+        validate_stage_records(baseline_trials, stage="baseline", known_case_ids=known_case_ids)
+        validate_stage_records(candidate_trials, stage="candidate", known_case_ids=known_case_ids)
+
+        reliability_config = (
+            evaluation_suite.get("reliability") if isinstance(evaluation_suite.get("reliability"), dict) else None
+        )
+        if reliability_config is None:
+            return ["archived reliability.json exists but evaluation.json no longer configures a reliability section"]
+        evaluators = evaluation_suite.get("evaluators") if isinstance(evaluation_suite.get("evaluators"), list) else None
+        seed = archived_reliability.get("method", {}).get("seed", DEFAULT_SEED)
+
+        recomputed = build_reliability(
+            test_cases,
+            baseline_trials,
+            candidate_trials,
+            config=reliability_config,
+            evaluators=evaluators,
+            seed=seed,
+            now=None,
+        )
+        recomputed = attach_trial_hashes(recomputed, baseline_trials_path, candidate_trials_path)
+        if not reliability_reports_equal(recomputed, archived_reliability):
+            problems.append("reliability.json does not match recomputed statistics from the archived trial evidence")
+
+        inputs = archived_reliability.get("inputs", {})
+        if inputs.get("candidate_dataset_fingerprint") not in (None, manifest_dataset_fingerprint):
+            problems.append("reliability.json candidate dataset fingerprint does not match this run's own evidence")
+        if inputs.get("candidate_evaluator_fingerprint") not in (None, manifest_evaluator_fingerprint):
+            problems.append("reliability.json candidate evaluator fingerprint does not match this run's own evidence")
+
+        problems.extend(_verify_trials_consistency(single_run_evaluated, candidate_trials))
+    except (DataError, OSError) as exc:
+        problems.append(f"cannot verify reliability evidence: {exc}")
+    return problems
+
+
 def _archive_run(
     *,
     history_root: str | Path,
@@ -268,11 +393,27 @@ def _archive_run(
     source_dir = _resolve_case_dir(case_dir)
     _guard_case_outside_history_root(paths["root"], source_dir)
 
-    files = _collect_source_artifacts(source_dir, stage)
+    files = _collect_source_artifacts(source_dir, stage, role)
     evaluated_records = read_jsonl(files["evaluated.jsonl"], "case_id")
     dataset_fp, evaluator_fp = _evaluated_fingerprints(evaluated_records)
     cohort = cohort_id_for(dataset_fp, evaluator_fp)
     stage_metrics = _stage_metrics(evaluated_records)
+
+    if "reliability.json" in files:
+        # Recompute before ever writing to disk: a favorable reliability.json
+        # can never be archived without trials that actually reproduce it.
+        reliability_problems = _verify_reliability_evidence(
+            reliability_path=files["reliability.json"],
+            baseline_trials_path=files["baseline.trials.evaluated.jsonl"],
+            candidate_trials_path=files["candidate.trials.evaluated.jsonl"],
+            test_cases_path=files["test_cases.jsonl"],
+            evaluation_path=files["evaluation.json"],
+            single_run_evaluated_path=files["evaluated.jsonl"],
+            manifest_dataset_fingerprint=dataset_fp,
+            manifest_evaluator_fingerprint=evaluator_fp,
+        )
+        if reliability_problems:
+            raise DataError("Cannot archive untrusted reliability evidence: " + "; ".join(reliability_problems))
 
     artifact_hashes = {name: hash_file(source) for name, source in files.items()}
     snapshot_fingerprint = fingerprint({"artifacts": artifact_hashes})
@@ -417,6 +558,20 @@ def verify_run_integrity(history_root: str | Path, run_id: str) -> list[str]:
                 if manifest.get("reliability") != expected_reliability:
                     problems.append(
                         f"{run_id}: manifest reliability summary does not match archived reliability.json (tampered statistics)"
+                    )
+                if reliability_path.exists():
+                    problems.extend(
+                        f"{run_id}: {problem}"
+                        for problem in _verify_reliability_evidence(
+                            reliability_path=reliability_path,
+                            baseline_trials_path=run_dir / "baseline.trials.evaluated.jsonl",
+                            candidate_trials_path=run_dir / "candidate.trials.evaluated.jsonl",
+                            test_cases_path=run_dir / "test_cases.jsonl",
+                            evaluation_path=run_dir / "evaluation.json",
+                            single_run_evaluated_path=run_dir / "evaluated.jsonl",
+                            manifest_dataset_fingerprint=manifest.get("dataset_fingerprint", ""),
+                            manifest_evaluator_fingerprint=manifest.get("evaluator_fingerprint", ""),
+                        )
                     )
         except (DataError, OSError) as exc:
             problems.append(f"{run_id}: cannot derive manifest evidence: {exc}")

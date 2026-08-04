@@ -56,6 +56,8 @@ def _acceptance_policy(
     cases: dict[str, dict[str, Any]],
     policy: dict[str, Any],
     reliability: dict[str, Any] | None = None,
+    *,
+    reliability_required: bool = False,
 ) -> dict[str, Any]:
     reasons: list[str] = []
     manual_reasons: list[str] = []
@@ -111,8 +113,12 @@ def _acceptance_policy(
 
     # A statistical result never overrides this deterministic policy: it can only
     # confirm it or make it more conservative (see reliability.combine_recommendations).
+    # Without a `reliability` section in evaluation.json (reliability_required is
+    # False and no report is supplied), the statistical layer is not consulted at
+    # all — Sprint 4/5 behavior is unchanged.
+    reject_on_evaluator_error = bool(policy.get("reject_on_evaluator_error", True))
     if reliability is not None:
-        statistical = reliability_acceptance(reliability)
+        statistical = reliability_acceptance(reliability, reject_on_evaluator_error=reject_on_evaluator_error)
         combined = combine_recommendations(recommendation, statistical["recommendation"])
         result["deterministic_recommendation"] = recommendation
         result["recommendation"] = combined
@@ -121,10 +127,31 @@ def _acceptance_policy(
             "recommendation": statistical["recommendation"],
             "reasons": statistical["reasons"],
             "paired_cases": reliability["comparison"]["paired_cases"],
+            "paired_observations": reliability["comparison"].get("paired_observations"),
             "probability_of_improvement": reliability["comparison"]["probability_of_improvement"],
             "pass_rate_delta": reliability["comparison"]["pass_rate_delta"],
             "bootstrap_ci": [reliability["comparison"]["bootstrap"]["ci_low"], reliability["comparison"]["bootstrap"]["ci_high"]],
             "flaky_cases": reliability["comparison"]["flaky_cases"],
+        }
+    elif reliability_required:
+        # A `reliability` section is configured but no valid, fresh report is
+        # available for this candidate: never fall back to the deterministic
+        # decision alone, and never fabricate statistics — force manual_review.
+        combined = combine_recommendations(recommendation, "manual_review")
+        result["deterministic_recommendation"] = recommendation
+        result["recommendation"] = combined
+        result["reasons"] = list(result["reasons"]) + [
+            "A reliability section is configured but no valid, matching reliability.json is available for this candidate"
+        ]
+        result["statistical_reliability"] = {
+            "recommendation": "manual_review",
+            "reasons": ["reliability.json is missing or does not match the configured reliability section"],
+            "paired_cases": None,
+            "paired_observations": None,
+            "probability_of_improvement": None,
+            "pass_rate_delta": None,
+            "bootstrap_ci": [None, None],
+            "flaky_cases": [],
         }
     return result
 
@@ -135,6 +162,8 @@ def compare(
     candidate_path: str | Path,
     suite: dict[str, Any] | None = None,
     reliability: dict[str, Any] | None = None,
+    *,
+    reliability_required: bool = False,
 ) -> dict[str, Any]:
     cases = index_by(read_jsonl(test_cases_path, "id"), "id")
     baseline = index_by(read_jsonl(baseline_path, "case_id"), "case_id")
@@ -203,7 +232,9 @@ def compare(
         compatibility_warnings.append("Baseline and candidate use different dataset fingerprints")
     if len(evaluator_fingerprints) > 1:
         compatibility_warnings.append("Baseline and candidate use different evaluator fingerprints")
-    acceptance = _acceptance_policy(items, cases, (suite or {}).get("acceptance", {}), reliability)
+    acceptance = _acceptance_policy(
+        items, cases, (suite or {}).get("acceptance", {}), reliability, reliability_required=reliability_required
+    )
     if compatibility_warnings:
         acceptance = {**acceptance, "recommendation": "manual_review", "reasons": compatibility_warnings}
     return {

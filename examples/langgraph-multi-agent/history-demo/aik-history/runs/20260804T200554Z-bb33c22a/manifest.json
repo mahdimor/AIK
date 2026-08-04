@@ -1,17 +1,17 @@
 {
   "format_version": "1.0",
-  "run_id": "20260804T184307Z-4860d570",
-  "recorded_at": "2026-08-04T18:43:07.720825+00:00",
+  "run_id": "20260804T200554Z-bb33c22a",
+  "recorded_at": "2026-08-04T20:05:54.581804+00:00",
   "label": "Reliability-checked billing routing fix",
   "agent_version": "demo-v3",
   "stage": "candidate",
   "role": "candidate",
   "source_case": "reliability-demo",
-  "parent_champion_run_id": "20260804T184305Z-3608f8f6",
+  "parent_champion_run_id": "20260804T200552Z-3608f8f6",
   "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
   "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
   "cohort_id": "sha256:39ba0243889f6d3df49565d6b8379a1d4cece7bdd6761018684768d3589f4ee7",
-  "snapshot_fingerprint": "sha256:4860d57022fb5f57f518a96c5af2a5c59f7f57803a2c47840283970866a30118",
+  "snapshot_fingerprint": "sha256:bb33c22a9d4aa86ed7ecd87532f82b8cf339d0c54776d05bcba69949228d89bc",
   "case_count": 2,
   "passed": 2,
   "failed": 0,
@@ -22,7 +22,7 @@
   "reliability": {
     "recommendation": "manual_review",
     "paired_cases": 2,
-    "probability_of_improvement": 0.749,
+    "probability_of_improvement": 0.4936,
     "pass_rate_delta": 0.083333,
     "flaky_case_count": 1
   },
@@ -30,11 +30,13 @@
     "test_cases.jsonl": "sha256:eec5b9160293bd252cbf645848a014dd91435c251537212148f3c283600405f5",
     "dataset.json": "sha256:6df4a1e1d31828527d847946929b25176bbe8b5d62edec857295138c6d233d22",
     "evaluation.json": "sha256:412cf5a61c6b827793461625d31facd4b4c6669f36b4b975e949bb6f4f724e83",
-    "evaluated.jsonl": "sha256:13edea0dfca7d0d37a0dfc298abaccc92137b188ac4989ccea71907b10b9d7b0",
-    "comparison.json": "sha256:966251d3a64f59ce97c8db0acce9d7aff2fda7bf765927a58a0947be71dc7b5a",
+    "evaluated.jsonl": "sha256:d1c8e170ad50b046ac801d4654a232d3bf8731a52f728265e07012ea6013e886",
+    "comparison.json": "sha256:ac7d0e243e561f433a910bebd4ee840995c20446dda1ff0551404510856ed049",
     "decision.yaml": "sha256:0cfe07240e320635f5f13c985bc96c736b025e5af2f32d8a7157b99d90bc1400",
-    "review.html": "sha256:1cdc8964301f26f3870d79cd1082d1bd7a314b1eb50236e61529ff291989772b",
-    "reliability.json": "sha256:adf575438bb7fb3ed0bb7ec20a4605433d929b3ab2b1c666d553e91a6ac5beed"
+    "review.html": "sha256:cef9dc74948d7cf1e8324a82d79f6a4f6af3bced72097ce78c90e6b765c548b8",
+    "reliability.json": "sha256:1ba806a90470a59591287920578b72108b91d52c62d7e20601e8a2420e230924",
+    "baseline.trials.evaluated.jsonl": "sha256:2873674183c338ac88e564d00ddde633861c8ed48a7b6e68aa853872b975d68e",
+    "candidate.trials.evaluated.jsonl": "sha256:2ec9adb3ad3d582791eee76a0ce6fe3ec8756bdef38a32554a630ebc32ede4ca"
   },
   "metadata": {}
 }

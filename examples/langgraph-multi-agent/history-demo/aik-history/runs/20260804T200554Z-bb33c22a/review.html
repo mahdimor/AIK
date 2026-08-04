@@ -8,16 +8,16 @@
 <strong>Hypothesis</strong><br>TODO<br><br>
 <strong>Change</strong><br>TODO</div>
 <div class="cards"><div class="card"><div class="num">2</div><div class="label">total</div></div><div class="card"><div class="num">1</div><div class="label">Improved</div></div><div class="card"><div class="num">0</div><div class="label">Regressed</div></div><div class="card"><div class="num">1</div><div class="label">Unchanged</div></div><div class="card"><div class="num">0</div><div class="label">Not comparable</div></div></div>
-<div class="recommend"><h3>MANUAL REVIEW REQUIRED</h3>All configured acceptance gates passed; Probability of improvement 0.749 is below the configured threshold 0.900</div>
+<div class="recommend"><h3>MANUAL REVIEW REQUIRED</h3>All configured acceptance gates passed; Probability of improvement 0.494 is below the configured threshold 0.900</div>
 <div class="recommend reliability"><h3>Reliability</h3>
-<div class="meta">Method aik-reliability-wilson-bootstrap-1.0 &middot; confidence 0.95 &middot;
+<div class="meta">Method aik-reliability-hierarchical-bootstrap-2.0 &middot; confidence 0.95 &middot;
 5000 bootstrap samples &middot; seed 1337</div>
 <div class="meta"><strong>Baseline</strong> &middot; n=12 &middot; pass rate 83.3% &middot; 95% CI [55.2%, 95.3%]</div>
 <div class="meta"><strong>Candidate</strong> &middot; n=12 &middot; pass rate 91.7% &middot; 95% CI [64.6%, 98.5%]</div>
 <div class="meta"><strong>Delta</strong> &middot; +8.3pp &middot;
-bootstrap CI [+0.0pp, +16.7pp] &middot;
-P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
-<div class="meta"><strong>Statistical recommendation</strong>: manual_review — Probability of improvement 0.749 is below the configured threshold 0.900</div>
+bootstrap CI [-16.7pp, +41.7pp] &middot;
+P(candidate&gt;baseline) 0.494 (configured threshold 0.90)</div>
+<div class="meta"><strong>Statistical recommendation</strong>: manual_review — Probability of improvement 0.494 is below the configured threshold 0.900</div>
 <div class="meta"><strong>Flaky cases</strong><ul><li>intermittent-billing-routing <span class="sub">(high risk)</span></li></ul></div>
 <div class="meta"><strong>Evaluator instability</strong><ul><li>baseline: required-agents@1 (4 pass / 2 fail across repetitions)</li><li>candidate: required-agents@1 (5 pass / 1 fail across repetitions)</li></ul></div>
 <div class="meta"><strong>Incompatible evaluator versions</strong><ul><li>None</li></ul></div>
@@ -33,7 +33,7 @@ P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
     &quot;required-agents&quot;: &quot;fail&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 70,
+    &quot;duration_ms&quot;: 66,
     &quot;exit_code&quot;: 0
   },
   &quot;error&quot;: null,
@@ -83,7 +83,7 @@ P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
     &quot;required-agents&quot;: &quot;pass&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 71,
+    &quot;duration_ms&quot;: 69,
     &quot;exit_code&quot;: 0
   },
   &quot;error&quot;: null,
@@ -135,7 +135,7 @@ P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
     &quot;required-agents&quot;: &quot;not_applicable&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 69,
+    &quot;duration_ms&quot;: 65,
     &quot;exit_code&quot;: 0
   },
   &quot;error&quot;: null,
@@ -185,7 +185,7 @@ P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
     &quot;required-agents&quot;: &quot;not_applicable&quot;
   },
   &quot;execution&quot;: {
-    &quot;duration_ms&quot;: 70,
+    &quot;duration_ms&quot;: 104,
     &quot;exit_code&quot;: 0
   },
   &quot;error&quot;: null,

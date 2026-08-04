@@ -9,6 +9,7 @@ from pathlib import Path
 
 from common import DataError, fingerprint, read_json, read_jsonl
 from evaluate_results import _validate_suite
+from reliability import resolve_config
 
 
 BASE_FILES = ("case.yaml", "decision.yaml", "test_cases.jsonl")
@@ -57,6 +58,12 @@ def validate(case_dir: str | Path) -> tuple[list[str], list[str]]:
             _validate_suite(suite)
     except DataError as exc:
         return [str(exc)], warnings
+
+    if is_v2 and isinstance(suite.get("reliability"), dict):
+        try:
+            resolve_config(suite["reliability"])
+        except DataError as exc:
+            errors.append(f"evaluation.json 'reliability' section is invalid: {exc}")
 
     if not cases:
         errors.append("test_cases.jsonl has no test cases")
