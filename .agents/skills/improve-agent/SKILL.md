@@ -1,6 +1,6 @@
 ---
 name: improve-agent
-description: Turn an AI-agent failure or behavior change into a reproducible improvement case with governed datasets, raw executions, deterministic and optional LLM evaluators, explicit acceptance gates, baseline/candidate comparison, human review, promoted regression tests, immutable champion history, and a standalone local dashboard. Use when evaluating or comparing agent versions, investigating failed conversations or tool calls, validating prompt/model/routing/tool changes, checking multi-agent behavior, preserving fixed incidents as permanent tests, or tracking accepted agent versions over time.
+description: Turn an AI-agent failure or behavior change into a reproducible improvement case with governed datasets, raw executions, deterministic and optional LLM evaluators, explicit acceptance gates, baseline/candidate comparison, human review, promoted regression tests, immutable champion history, a standalone local dashboard, and repeated-trial statistical reliability analysis. Use when evaluating or comparing agent versions, investigating failed conversations or tool calls, validating prompt/model/routing/tool changes, checking multi-agent behavior, preserving fixed incidents as permanent tests, tracking accepted agent versions over time, or checking whether an observed improvement is repeatable rather than agent/judge noise.
 ---
 
 # Improve Agent
@@ -84,6 +84,38 @@ full timeline — coverage growth is never presented as quality improvement, and
 incompatible cohort never produces a fabricated delta. Read
 `references/history-dashboard.md` for the full command reference, comparability
 rules, metric formulas, and security notes.
+
+## Statistical Reliability
+
+A single baseline/candidate run cannot tell you whether an improvement is repeatable
+or just agent/LLM-judge noise. Repeat the same cases and let AIK measure it:
+
+```bash
+python aik.py run improvements/<case-name> --stage baseline --repetitions 5 -- RUNNER_COMMAND
+python aik.py run improvements/<case-name> --stage candidate --repetitions 5 -- RUNNER_COMMAND
+python aik.py evaluate improvements/<case-name> --stage baseline --trials
+python aik.py evaluate improvements/<case-name> --stage candidate --trials
+python aik.py reliability improvements/<case-name>
+python aik.py review improvements/<case-name>
+```
+
+`--repetitions` defaults to `1` and is fully backward compatible at that default.
+Above `1`, every `(case_id, repetition)` executes independently through the same
+external-process runner protocol and is evaluated by the same evaluators used for a
+single run — there is no separate evaluation engine. `aik reliability` reads that
+evidence and writes `reliability.json`: pass rate, Wilson confidence interval, a
+deterministic seeded bootstrap for the baseline/candidate delta and `P(candidate >
+baseline)`, flaky cases, and evaluator version incompatibilities, using only the
+Python standard library. Missing or errored observations are never converted into a
+zero score. Add an optional `reliability` section to `evaluation.json` to gate
+acceptance on this evidence — without it, behavior is unchanged from Sprint 4/5. With
+it, insufficient repetitions or a probability below the configured threshold can only
+push a recommendation toward `manual_review`/`rejected`, never toward `eligible`: a
+statistical result can never override a deterministic rejection. `aik history`
+archives `reliability.json` like any other artifact (hashed, tamper-detected), so an
+unrepeatable candidate cannot become champion. Read
+`references/statistical-reliability.md` for the exact formulas, config schema, and
+promotion interaction.
 
 ## Evaluation Rules
 

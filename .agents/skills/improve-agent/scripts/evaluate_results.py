@@ -12,7 +12,16 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from common import DataError, fingerprint, index_by, read_json, read_jsonl, write_jsonl
+from common import (
+    DataError,
+    fingerprint,
+    index_by,
+    observation_sort_key,
+    read_json,
+    read_jsonl,
+    select_cases,
+    write_jsonl,
+)
 
 
 STATUSES = {"pass", "fail", "not_applicable", "error"}
@@ -244,6 +253,63 @@ def _validate_suite(suite: dict[str, Any]) -> list[dict[str, Any]]:
     return evaluators
 
 
+def _evaluate_one(
+    case: dict[str, Any],
+    raw: dict[str, Any] | None,
+    evaluators: list[dict[str, Any]],
+    judge_command: Sequence[str],
+    timeout_seconds: float,
+) -> tuple[dict[str, Any], str, int]:
+    """Evaluate one raw observation. Returns (output fields, verdict, evaluator_error_count).
+
+    Missing or errored evidence is never silently converted into a passing or
+    failing score: it becomes `manual_review` so a human decides.
+    """
+    if raw is None:
+        evaluations = [_result({"id": "execution-present", "type": "no_execution_error"}, "error", "Missing raw result")]
+        output: dict[str, Any] = {"output": ""}
+    else:
+        evaluations = []
+        for evaluator in evaluators:
+            if evaluator.get("enabled", True) is False:
+                continue
+            if evaluator["type"] == "llm_rubric":
+                evaluation = _external_evaluation(case, raw, evaluator, judge_command, timeout_seconds)
+            else:
+                evaluation = BUILT_INS[evaluator["type"]](case, raw, evaluator)
+            evaluations.append(evaluation)
+        output = dict(raw)
+
+    required_by_id = {item["id"]: item.get("required", True) for item in evaluators}
+    required_results = [item for item in evaluations if required_by_id.get(item["evaluator_id"], True) and item["status"] != "not_applicable"]
+    if any(item["status"] == "error" for item in required_results):
+        verdict, boolean = "manual_review", None
+    elif any(item["status"] == "fail" for item in required_results):
+        verdict, boolean = "fail", False
+    elif required_results and all(item["status"] == "pass" for item in required_results):
+        verdict, boolean = "pass", True
+    else:
+        verdict, boolean = "manual_review", None
+
+    error_count = sum(item["status"] == "error" for item in evaluations)
+    output.update(
+        {
+            "passed": boolean,
+            "verdict": verdict,
+            "evaluations": evaluations,
+            "scores": {item["evaluator_id"]: item["score"] for item in evaluations if "score" in item},
+            "contracts": {item["evaluator_id"]: item["status"] for item in evaluations if item["kind"] == "deterministic"},
+        }
+    )
+    return output, verdict, error_count
+
+
+def _suite_fingerprints(cases: list[dict[str, Any]], suite: dict[str, Any], evaluators: list[dict[str, Any]]) -> tuple[str, str]:
+    dataset_fp = fingerprint(cases)
+    evaluator_fp = fingerprint({"evaluators": evaluators, "acceptance": suite.get("acceptance", {})})
+    return dataset_fp, evaluator_fp
+
+
 def evaluate(
     case_dir: str | Path,
     stage: str,
@@ -259,20 +325,7 @@ def evaluate(
         raise DataError("Stage must be baseline or candidate")
     directory = Path(case_dir).resolve()
     cases = read_jsonl(directory / "test_cases.jsonl", "id")
-    known_ids = {case["id"] for case in cases}
-    unknown_ids = (selected_ids or set()) - known_ids
-    if unknown_ids:
-        raise DataError(f"Unknown selected case IDs: {', '.join(sorted(unknown_ids))}")
-    selected_cases = []
-    for case in cases:
-        if selected_ids and case["id"] not in selected_ids:
-            continue
-        tags = set(case.get("tags", [])) if isinstance(case.get("tags"), list) else set()
-        if selected_tags and not (tags & selected_tags):
-            continue
-        selected_cases.append(case)
-    if not selected_cases:
-        raise DataError("No test cases matched the selected IDs and tags")
+    selected_cases = select_cases(cases, selected_ids, selected_tags)
     if resume and overwrite:
         raise DataError("Use either resume or overwrite, not both")
     suite = read_json(directory / "evaluation.json")
@@ -285,8 +338,7 @@ def evaluate(
     destination = directory / f"{stage}.evaluated.jsonl"
     if destination.exists() and destination.stat().st_size and not (overwrite or resume):
         raise DataError(f"{destination.name} already contains results; use --overwrite")
-    dataset_fp = fingerprint(cases)
-    evaluator_fp = fingerprint({"evaluators": evaluators, "acceptance": suite.get("acceptance", {})})
+    dataset_fp, evaluator_fp = _suite_fingerprints(cases, suite, evaluators)
     evaluated = read_jsonl(destination, "case_id") if resume and destination.exists() else []
     evaluated_index = index_by(evaluated, "case_id")
     errors = failed = passed = manual = 0
@@ -296,49 +348,118 @@ def evaluate(
             skipped += 1
             continue
         raw = raw_index.get(case["id"])
-        if raw is None:
-            evaluations = [_result({"id": "execution-present", "type": "no_execution_error"}, "error", "Missing raw result")]
-            output: dict[str, Any] = {"case_id": case["id"], "output": ""}
-        else:
-            evaluations = []
-            for evaluator in evaluators:
-                if evaluator.get("enabled", True) is False:
-                    continue
-                if evaluator["type"] == "llm_rubric":
-                    evaluation = _external_evaluation(case, raw, evaluator, judge_command, timeout_seconds)
-                else:
-                    evaluation = BUILT_INS[evaluator["type"]](case, raw, evaluator)
-                evaluations.append(evaluation)
-            output = dict(raw)
-        required_by_id = {item["id"]: item.get("required", True) for item in evaluators}
-        required_results = [item for item in evaluations if required_by_id.get(item["evaluator_id"], True) and item["status"] != "not_applicable"]
-        if any(item["status"] == "error" for item in required_results):
-            verdict, boolean = "manual_review", None
-            manual += 1
-        elif any(item["status"] == "fail" for item in required_results):
-            verdict, boolean = "fail", False
-            failed += 1
-        elif required_results and all(item["status"] == "pass" for item in required_results):
-            verdict, boolean = "pass", True
+        output, verdict, error_count = _evaluate_one(case, raw, evaluators, judge_command, timeout_seconds)
+        output.update(
+            {
+                "case_id": case["id"],
+                "evaluation_metadata": {"stage": stage, "dataset_fingerprint": dataset_fp, "evaluator_fingerprint": evaluator_fp},
+            }
+        )
+        errors += error_count
+        if verdict == "pass":
             passed += 1
+        elif verdict == "fail":
+            failed += 1
         else:
-            verdict, boolean = "manual_review", None
             manual += 1
-        errors += sum(item["status"] == "error" for item in evaluations)
-        output.update({
-            "case_id": case["id"],
-            "passed": boolean,
-            "verdict": verdict,
-            "evaluations": evaluations,
-            "scores": {item["evaluator_id"]: item["score"] for item in evaluations if "score" in item},
-            "contracts": {item["evaluator_id"]: item["status"] for item in evaluations if item["kind"] == "deterministic"},
-            "evaluation_metadata": {"stage": stage, "dataset_fingerprint": dataset_fp, "evaluator_fingerprint": evaluator_fp},
-        })
         evaluated_index[case["id"]] = output
         print(f"{case['id']}: {verdict.upper()}")
     evaluated = [evaluated_index[key] for key in sorted(evaluated_index)]
     write_jsonl(destination, evaluated)
     return {"destination": destination, "total": len(evaluated), "selected": len(selected_cases), "executed": len(selected_cases) - skipped, "skipped": skipped, "passed": passed, "failed": failed, "manual_review": manual, "evaluator_errors": errors, "dataset_fingerprint": dataset_fp, "evaluator_fingerprint": evaluator_fp}
+
+
+def evaluate_trials(
+    case_dir: str | Path,
+    stage: str,
+    judge_command: Sequence[str] = (),
+    *,
+    timeout_seconds: float = 60,
+    selected_ids: set[str] | None = None,
+    selected_tags: set[str] | None = None,
+    resume: bool = False,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Evaluate every repeated observation from `aik run --repetitions N` independently.
+
+    Reads `{stage}.trials.raw.jsonl` and writes `{stage}.trials.evaluated.jsonl`,
+    applying the same evaluators as single-run `evaluate()` to each observation.
+    """
+    if stage not in {"baseline", "candidate"}:
+        raise DataError("Stage must be baseline or candidate")
+    directory = Path(case_dir).resolve()
+    cases = read_jsonl(directory / "test_cases.jsonl", "id")
+    cases_by_id = index_by(cases, "id")
+    selected_cases = select_cases(cases, selected_ids, selected_tags)
+    selected_case_ids = {case["id"] for case in selected_cases}
+    if resume and overwrite:
+        raise DataError("Use either resume or overwrite, not both")
+    suite = read_json(directory / "evaluation.json")
+    evaluators = _validate_suite(suite)
+
+    raw_path = directory / f"{stage}.trials.raw.jsonl"
+    if not raw_path.exists() or not raw_path.stat().st_size:
+        raise DataError(f"No trial evidence found: {raw_path.name}; run 'aik run --repetitions N' first")
+    raw_records = read_jsonl(raw_path, "observation_id")
+    raw_index = index_by(raw_records, "observation_id")
+    observation_ids = sorted(
+        (obs_id for obs_id, record in raw_index.items() if record.get("case_id") in selected_case_ids),
+        key=observation_sort_key,
+    )
+    if not observation_ids:
+        raise DataError("No trial observations matched the selected IDs and tags")
+
+    destination = directory / f"{stage}.trials.evaluated.jsonl"
+    if destination.exists() and destination.stat().st_size and not (overwrite or resume):
+        raise DataError(f"{destination.name} already contains results; use --overwrite")
+    dataset_fp, evaluator_fp = _suite_fingerprints(cases, suite, evaluators)
+    evaluated = read_jsonl(destination, "observation_id") if resume and destination.exists() else []
+    evaluated_index = index_by(evaluated, "observation_id")
+
+    errors = failed = passed = manual = 0
+    skipped = 0
+    for observation_id in observation_ids:
+        if resume and observation_id in evaluated_index:
+            skipped += 1
+            continue
+        raw = raw_index[observation_id]
+        case = cases_by_id.get(raw.get("case_id"))
+        if case is None:
+            raise DataError(f"Trial observation {observation_id} references unknown case: {raw.get('case_id')}")
+        output, verdict, error_count = _evaluate_one(case, raw, evaluators, judge_command, timeout_seconds)
+        output.update(
+            {
+                "case_id": case["id"],
+                "repetition": raw.get("repetition"),
+                "observation_id": observation_id,
+                "evaluation_metadata": {"stage": stage, "dataset_fingerprint": dataset_fp, "evaluator_fingerprint": evaluator_fp},
+            }
+        )
+        errors += error_count
+        if verdict == "pass":
+            passed += 1
+        elif verdict == "fail":
+            failed += 1
+        else:
+            manual += 1
+        evaluated_index[observation_id] = output
+        print(f"{observation_id}: {verdict.upper()}")
+
+    evaluated = [evaluated_index[key] for key in sorted(evaluated_index, key=observation_sort_key)]
+    write_jsonl(destination, evaluated)
+    return {
+        "destination": destination,
+        "total": len(evaluated),
+        "selected": len(observation_ids),
+        "executed": len(observation_ids) - skipped,
+        "skipped": skipped,
+        "passed": passed,
+        "failed": failed,
+        "manual_review": manual,
+        "evaluator_errors": errors,
+        "dataset_fingerprint": dataset_fp,
+        "evaluator_fingerprint": evaluator_fp,
+    }
 
 
 def main() -> int:
@@ -351,6 +472,7 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--resume", action="store_true")
     mode.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--trials", action="store_true")
     raw_arguments = sys.argv[1:]
     command: list[str] = []
     if "--" in raw_arguments:
@@ -358,8 +480,9 @@ def main() -> int:
         command = raw_arguments[separator + 1:]
         raw_arguments = raw_arguments[:separator]
     args = parser.parse_args(raw_arguments)
+    entrypoint = evaluate_trials if args.trials else evaluate
     try:
-        summary = evaluate(
+        summary = entrypoint(
             args.case_dir,
             args.stage,
             command,

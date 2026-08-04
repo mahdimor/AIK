@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -17,7 +17,7 @@ if str(SCRIPTS) not in sys.path:
 
 from common import DataError, write_json  # noqa: E402
 from execute_cases import execute  # noqa: E402
-from evaluate_results import evaluate  # noqa: E402
+from evaluate_results import evaluate, evaluate_trials  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
@@ -32,6 +32,7 @@ from history import (  # noqa: E402
 )
 from dashboard_model import build_dashboard  # noqa: E402
 from render_dashboard import render_dashboard  # noqa: E402
+from reliability import reliability_acceptance, run_reliability  # noqa: E402
 
 
 def _print_summary(result: dict) -> None:
@@ -73,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_mode.add_argument("--resume", action="store_true")
     run_mode.add_argument("--overwrite", action="store_true")
     run_parser.add_argument("--cwd")
+    run_parser.add_argument("--repetitions", type=int, default=1, help="Independently execute each case N times for reliability analysis")
 
     evaluate_parser = commands.add_parser(
         "evaluate",
@@ -87,6 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_mode = evaluate_parser.add_mutually_exclusive_group()
     evaluate_mode.add_argument("--resume", action="store_true")
     evaluate_mode.add_argument("--overwrite", action="store_true")
+    evaluate_parser.add_argument("--trials", action="store_true", help="Evaluate repeated observations from --repetitions instead of the single-run stage")
+
+    reliability_parser = commands.add_parser(
+        "reliability", help="Aggregate repeated-observation trials into a statistical reliability report"
+    )
+    reliability_parser.add_argument("case_dir")
+    reliability_parser.add_argument("--output", default=None, help="Alternate path for reliability.json")
 
     review_parser = commands.add_parser("review", help="Compare runs and build the HTML review")
     review_parser.add_argument("case_dir")
@@ -182,13 +191,15 @@ def main(argv: list[str] | None = None) -> int:
                 resume=args.resume,
                 overwrite=args.overwrite,
                 runner_cwd=args.cwd,
+                repetitions=args.repetitions,
             )
             print(" ".join(f"{key}={summary[key]}" for key in ("executed", "skipped", "execution_errors")))
             print(f"results={summary['destination']}")
             return 1 if summary["execution_errors"] else 0
 
         if args.command == "evaluate":
-            summary = evaluate(
+            entrypoint = evaluate_trials if args.trials else evaluate
+            summary = entrypoint(
                 args.case_dir,
                 args.stage,
                 runner_command,
@@ -208,6 +219,16 @@ def main(argv: list[str] | None = None) -> int:
             _print_summary(result)
             print(f"comparison={comparison_path}")
             print(f"review={review_path}")
+            return 0
+
+        if args.command == "reliability":
+            reliability = run_reliability(args.case_dir)
+            output_path = write_json(Path(args.output) if args.output else Path(args.case_dir) / "reliability.json", reliability)
+            acceptance = reliability_acceptance(reliability)
+            print(f"paired_cases={reliability['comparison']['paired_cases']}")
+            print(f"probability_of_improvement={reliability['comparison']['probability_of_improvement']}")
+            print(f"recommendation={acceptance['recommendation']}")
+            print(f"reliability={output_path}")
             return 0
 
         if args.command == "promote":

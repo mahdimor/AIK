@@ -1,0 +1,364 @@
+{
+  "format_version": "1.0",
+  "generated_at": "2026-08-04T18:43:07.704438+00:00",
+  "method": {
+    "version": "aik-reliability-wilson-bootstrap-1.0",
+    "confidence_level": 0.95,
+    "bootstrap_samples": 5000,
+    "seed": 1337
+  },
+  "config": {
+    "minimum_repetitions": 5,
+    "confidence_level": 0.95,
+    "bootstrap_samples": 5000,
+    "minimum_probability_of_improvement": 0.9,
+    "maximum_flaky_case_rate": 0.5
+  },
+  "inputs": {
+    "baseline_dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+    "baseline_evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+    "candidate_dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+    "candidate_evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+    "fingerprint_warnings": []
+  },
+  "stages": {
+    "baseline": {
+      "observations": 12,
+      "cases": {
+        "intermittent-billing-routing": {
+          "case_id": "intermittent-billing-routing",
+          "observations": 6,
+          "pass": 4,
+          "fail": 2,
+          "manual_review": 0,
+          "pass_rate": 0.666667,
+          "wilson_interval": [
+            0.299993,
+            0.903229
+          ],
+          "flaky": true,
+          "evaluators": {
+            "execution-ok@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "execution-ok",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "forbidden-agents@1": {
+              "kind": "deterministic",
+              "pass": 0,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 6,
+              "evaluator_id": "forbidden-agents",
+              "evaluator_version": "1",
+              "observations_scored": 0,
+              "mean_score": null,
+              "stdev": null
+            },
+            "required-agents@1": {
+              "kind": "deterministic",
+              "pass": 4,
+              "fail": 2,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "required-agents",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 0.666667,
+              "stdev": 0.516398
+            }
+          }
+        },
+        "stable-greeting": {
+          "case_id": "stable-greeting",
+          "observations": 6,
+          "pass": 6,
+          "fail": 0,
+          "manual_review": 0,
+          "pass_rate": 1.0,
+          "wilson_interval": [
+            0.609666,
+            1.0
+          ],
+          "flaky": false,
+          "evaluators": {
+            "execution-ok@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "execution-ok",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "forbidden-agents@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "forbidden-agents",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "required-agents@1": {
+              "kind": "deterministic",
+              "pass": 0,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 6,
+              "evaluator_id": "required-agents",
+              "evaluator_version": "1",
+              "observations_scored": 0,
+              "mean_score": null,
+              "stdev": null
+            }
+          }
+        }
+      },
+      "overall": {
+        "pass": 10,
+        "fail": 2,
+        "manual_review": 0,
+        "pass_rate": 0.833333,
+        "wilson_interval": [
+          0.551969,
+          0.953035
+        ]
+      },
+      "evaluators": {
+        "execution-ok@1": {
+          "kind": "deterministic",
+          "pass": 12,
+          "fail": 0,
+          "error": 0,
+          "not_applicable": 0,
+          "evaluator_id": "execution-ok",
+          "evaluator_version": "1",
+          "observations_scored": 12,
+          "mean_score": 1.0,
+          "stdev": 0.0
+        },
+        "forbidden-agents@1": {
+          "kind": "deterministic",
+          "pass": 6,
+          "fail": 0,
+          "error": 0,
+          "not_applicable": 6,
+          "evaluator_id": "forbidden-agents",
+          "evaluator_version": "1",
+          "observations_scored": 6,
+          "mean_score": 1.0,
+          "stdev": 0.0
+        },
+        "required-agents@1": {
+          "kind": "deterministic",
+          "pass": 4,
+          "fail": 2,
+          "error": 0,
+          "not_applicable": 6,
+          "evaluator_id": "required-agents",
+          "evaluator_version": "1",
+          "observations_scored": 6,
+          "mean_score": 0.666667,
+          "stdev": 0.516398
+        }
+      }
+    },
+    "candidate": {
+      "observations": 12,
+      "cases": {
+        "intermittent-billing-routing": {
+          "case_id": "intermittent-billing-routing",
+          "observations": 6,
+          "pass": 5,
+          "fail": 1,
+          "manual_review": 0,
+          "pass_rate": 0.833333,
+          "wilson_interval": [
+            0.436497,
+            0.969947
+          ],
+          "flaky": true,
+          "evaluators": {
+            "execution-ok@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "execution-ok",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "forbidden-agents@1": {
+              "kind": "deterministic",
+              "pass": 0,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 6,
+              "evaluator_id": "forbidden-agents",
+              "evaluator_version": "1",
+              "observations_scored": 0,
+              "mean_score": null,
+              "stdev": null
+            },
+            "required-agents@1": {
+              "kind": "deterministic",
+              "pass": 5,
+              "fail": 1,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "required-agents",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 0.833333,
+              "stdev": 0.408248
+            }
+          }
+        },
+        "stable-greeting": {
+          "case_id": "stable-greeting",
+          "observations": 6,
+          "pass": 6,
+          "fail": 0,
+          "manual_review": 0,
+          "pass_rate": 1.0,
+          "wilson_interval": [
+            0.609666,
+            1.0
+          ],
+          "flaky": false,
+          "evaluators": {
+            "execution-ok@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "execution-ok",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "forbidden-agents@1": {
+              "kind": "deterministic",
+              "pass": 6,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 0,
+              "evaluator_id": "forbidden-agents",
+              "evaluator_version": "1",
+              "observations_scored": 6,
+              "mean_score": 1.0,
+              "stdev": 0.0
+            },
+            "required-agents@1": {
+              "kind": "deterministic",
+              "pass": 0,
+              "fail": 0,
+              "error": 0,
+              "not_applicable": 6,
+              "evaluator_id": "required-agents",
+              "evaluator_version": "1",
+              "observations_scored": 0,
+              "mean_score": null,
+              "stdev": null
+            }
+          }
+        }
+      },
+      "overall": {
+        "pass": 11,
+        "fail": 1,
+        "manual_review": 0,
+        "pass_rate": 0.916667,
+        "wilson_interval": [
+          0.64612,
+          0.985135
+        ]
+      },
+      "evaluators": {
+        "execution-ok@1": {
+          "kind": "deterministic",
+          "pass": 12,
+          "fail": 0,
+          "error": 0,
+          "not_applicable": 0,
+          "evaluator_id": "execution-ok",
+          "evaluator_version": "1",
+          "observations_scored": 12,
+          "mean_score": 1.0,
+          "stdev": 0.0
+        },
+        "forbidden-agents@1": {
+          "kind": "deterministic",
+          "pass": 6,
+          "fail": 0,
+          "error": 0,
+          "not_applicable": 6,
+          "evaluator_id": "forbidden-agents",
+          "evaluator_version": "1",
+          "observations_scored": 6,
+          "mean_score": 1.0,
+          "stdev": 0.0
+        },
+        "required-agents@1": {
+          "kind": "deterministic",
+          "pass": 5,
+          "fail": 1,
+          "error": 0,
+          "not_applicable": 6,
+          "evaluator_id": "required-agents",
+          "evaluator_version": "1",
+          "observations_scored": 6,
+          "mean_score": 0.833333,
+          "stdev": 0.408248
+        }
+      }
+    }
+  },
+  "comparison": {
+    "paired_cases": 2,
+    "pass_rate_delta": 0.083333,
+    "bootstrap": {
+      "ci_low": 0.0,
+      "ci_high": 0.166666
+    },
+    "probability_of_improvement": 0.749,
+    "flaky_cases": [
+      "intermittent-billing-routing"
+    ],
+    "incompatible_evaluators": [],
+    "changed_outcome_cases": []
+  },
+  "dataset_health": {
+    "consistently_easy": [
+      "stable-greeting"
+    ],
+    "consistently_failing": [],
+    "flaky": [
+      "intermittent-billing-routing"
+    ],
+    "evaluator_disagreement": [
+      "intermittent-billing-routing"
+    ],
+    "low_observation_tags": [],
+    "distinguishing_cases": []
+  }
+}

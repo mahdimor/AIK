@@ -27,7 +27,9 @@ def run(case_dir: str | Path) -> tuple[Path, Path, dict]:
     if not candidate.exists() or not candidate.stat().st_size:
         candidate = directory / "candidate.jsonl"
     suite = read_json(directory / "evaluation.json") if (directory / "evaluation.json").exists() else None
-    result = compare(directory / "test_cases.jsonl", baseline, candidate, suite)
+    reliability_path = directory / "reliability.json"
+    reliability = read_json(reliability_path) if reliability_path.exists() else None
+    result = compare(directory / "test_cases.jsonl", baseline, candidate, suite, reliability)
     # Keep generated artifacts reproducible and portable across machines.
     result["inputs"] = {
         "test_cases": "test_cases.jsonl",
@@ -35,7 +37,7 @@ def run(case_dir: str | Path) -> tuple[Path, Path, dict]:
         "candidate": candidate.name,
     }
     comparison_path = write_json(directory / "comparison.json", result)
-    review_path = render(comparison_path, directory / "case.yaml", directory / "review.html")
+    review_path = render(comparison_path, directory / "case.yaml", directory / "review.html", reliability)
     return comparison_path, review_path, result
 
 

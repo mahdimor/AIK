@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AIK Review · reliability-demo</title><style>:root{color-scheme:light;--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#64748b;--line:#dbe3ef;--green:#16803c;--green-bg:#e9f8ee;--red:#b42318;--red-bg:#fff0ee;--blue:#175cd3;--blue-bg:#eef4ff;--gray:#475467;--gray-bg:#f2f4f7;--amber:#b54708;--amber-bg:#fff6e6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}h1{font-size:32px;margin:0 0 5px}h2{margin-top:34px}h3{margin:0 0 8px}.sub{color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:24px 0}.card,.case,.context,.recommend{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px #102a430a}.card{padding:16px}.num{font-size:27px;font-weight:750}.label{font-size:12px;text-transform:uppercase;color:var(--muted)}.recommend{padding:20px;border-left:6px solid var(--blue)}.context{padding:18px;margin:18px 0}.case{margin:14px 0;overflow:hidden}.case-head{display:flex;gap:12px;align-items:center;padding:16px;border-bottom:1px solid var(--line)}.case-body{padding:16px}.badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}.improved{color:var(--green);background:var(--green-bg)}.regressed{color:var(--red);background:var(--red-bg)}.unchanged{color:var(--gray);background:var(--gray-bg)}.not_comparable{color:var(--amber);background:var(--amber-bg)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pane{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:13px;min-width:0}.pane-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:7px}pre{white-space:pre-wrap;word-break:break-word;margin:0;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.meta{font-size:13px;color:var(--muted);margin-top:10px}.warning{color:var(--amber);background:var(--amber-bg);padding:8px 10px;border-radius:8px;margin-top:9px}.delta{font-family:ui-monospace,Consolas,monospace;font-size:13px}details{margin-top:12px}summary{cursor:pointer;color:var(--blue)}.reliability{border-left-color:var(--gray);margin:18px 0}.reliability ul{margin:4px 0 0 18px;padding:0}.reliability li{margin:2px 0}.reliability code{font-family:ui-monospace,Consolas,monospace;background:var(--gray-bg);padding:1px 5px;border-radius:5px}
+@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style></head>
+<body><main class="wrap"><h1>Behavioral Change Review</h1><div class="sub">reliability-demo</div>
+<div class="context"><strong>Problem</strong><br>TODO<br><br>
+<strong>Hypothesis</strong><br>TODO<br><br>
+<strong>Change</strong><br>TODO</div>
+<div class="cards"><div class="card"><div class="num">2</div><div class="label">total</div></div><div class="card"><div class="num">1</div><div class="label">Improved</div></div><div class="card"><div class="num">0</div><div class="label">Regressed</div></div><div class="card"><div class="num">1</div><div class="label">Unchanged</div></div><div class="card"><div class="num">0</div><div class="label">Not comparable</div></div></div>
+<div class="recommend"><h3>MANUAL REVIEW REQUIRED</h3>All configured acceptance gates passed; Probability of improvement 0.749 is below the configured threshold 0.900</div>
+<div class="recommend reliability"><h3>Reliability</h3>
+<div class="meta">Method aik-reliability-wilson-bootstrap-1.0 &middot; confidence 0.95 &middot;
+5000 bootstrap samples &middot; seed 1337</div>
+<div class="meta"><strong>Baseline</strong> &middot; n=12 &middot; pass rate 83.3% &middot; 95% CI [55.2%, 95.3%]</div>
+<div class="meta"><strong>Candidate</strong> &middot; n=12 &middot; pass rate 91.7% &middot; 95% CI [64.6%, 98.5%]</div>
+<div class="meta"><strong>Delta</strong> &middot; +8.3pp &middot;
+bootstrap CI [+0.0pp, +16.7pp] &middot;
+P(candidate&gt;baseline) 0.749 (configured threshold 0.90)</div>
+<div class="meta"><strong>Statistical recommendation</strong>: manual_review — Probability of improvement 0.749 is below the configured threshold 0.900</div>
+<div class="meta"><strong>Flaky cases</strong><ul><li>intermittent-billing-routing <span class="sub">(high risk)</span></li></ul></div>
+<div class="meta"><strong>Evaluator instability</strong><ul><li>baseline: required-agents@1 (4 pass / 2 fail across repetitions)</li><li>candidate: required-agents@1 (5 pass / 1 fail across repetitions)</li></ul></div>
+<div class="meta"><strong>Incompatible evaluator versions</strong><ul><li>None</li></ul></div>
+</div>
+<h2>Case-by-case evidence</h2><section class="case"><div class="case-head"><span class="badge improved">Improved</span><div><h3>intermittent-billing-routing</h3><div class="sub">A billing request must reach the billing specialist</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · FAIL</div><pre>baseline:intermittent-billing-routing:repetition-0</pre><div class="meta">Agents: Unknown<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;execution-ok&quot;: 1.0,
+    &quot;required-agents&quot;: 0.0
+  },
+  &quot;contracts&quot;: {
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;not_applicable&quot;,
+    &quot;required-agents&quot;: &quot;fail&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 70,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: []
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Required values missing: billing-agent&quot;,
+      &quot;score&quot;: 0.0,
+      &quot;status&quot;: &quot;fail&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;No forbidden_agents expectation&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>candidate:intermittent-billing-routing:repetition-0</pre><div class="meta">Agents: billing-agent<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;execution-ok&quot;: 1.0,
+    &quot;required-agents&quot;: 1.0
+  },
+  &quot;contracts&quot;: {
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;not_applicable&quot;,
+    &quot;required-agents&quot;: &quot;pass&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 71,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: [
+          &quot;billing-agent&quot;
+        ]
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;No forbidden_agents expectation&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: high · Tags: billing, routing<br><span class="delta">Score deltas: execution-ok: +0, required-agents: +1</span></div></div></section><section class="case"><div class="case-head"><span class="badge unchanged">Unchanged</span><div><h3>stable-greeting</h3><div class="sub">A plain greeting never needs a specialist</div></div></div><div class="case-body"><div class="grid"><div class="pane"><div class="pane-title">Baseline · PASS</div><pre>baseline:stable-greeting:repetition-0</pre><div class="meta">Agents: Unknown<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0
+  },
+  &quot;contracts&quot;: {
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;not_applicable&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 69,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;No required_agents expectation&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: []
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    }
+  ]
+}</pre></details></div><div class="pane"><div class="pane-title">Candidate · PASS</div><pre>candidate:stable-greeting:repetition-0</pre><div class="meta">Agents: Unknown<br>Tools: None</div><details><summary>Scores, contracts, execution, and errors</summary><pre>{
+  &quot;scores&quot;: {
+    &quot;execution-ok&quot;: 1.0,
+    &quot;forbidden-agents&quot;: 1.0
+  },
+  &quot;contracts&quot;: {
+    &quot;execution-ok&quot;: &quot;pass&quot;,
+    &quot;forbidden-agents&quot;: &quot;pass&quot;,
+    &quot;required-agents&quot;: &quot;not_applicable&quot;
+  },
+  &quot;execution&quot;: {
+    &quot;duration_ms&quot;: 70,
+    &quot;exit_code&quot;: 0
+  },
+  &quot;error&quot;: null,
+  &quot;evaluations&quot;: [
+    {
+      &quot;evaluator_id&quot;: &quot;execution-ok&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;error&quot;: null
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Execution completed&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;required-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {},
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;No required_agents expectation&quot;,
+      &quot;status&quot;: &quot;not_applicable&quot;
+    },
+    {
+      &quot;evaluator_id&quot;: &quot;forbidden-agents&quot;,
+      &quot;evaluator_version&quot;: &quot;1&quot;,
+      &quot;evidence&quot;: {
+        &quot;expected&quot;: [
+          &quot;billing-agent&quot;
+        ],
+        &quot;observed&quot;: []
+      },
+      &quot;kind&quot;: &quot;deterministic&quot;,
+      &quot;reason&quot;: &quot;Contract satisfied&quot;,
+      &quot;score&quot;: 1.0,
+      &quot;status&quot;: &quot;pass&quot;
+    }
+  ]
+}</pre></details></div></div><div class="meta">Risk: low · Tags: routing, negative<br><span class="delta">Score deltas: execution-ok: +0, forbidden-agents: +0</span></div></div></section>
+<p class="sub">Generated from open AIK artifacts. A human decision is required before promotion or deployment.</p>
+</main></body></html>

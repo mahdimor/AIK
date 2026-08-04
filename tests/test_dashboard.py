@@ -9,12 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from common import write_json, write_jsonl  # noqa: E402
-from evaluate_results import evaluate  # noqa: E402
+from common import observation_id_for, read_json, write_json, write_jsonl  # noqa: E402
+from evaluate_results import evaluate, evaluate_trials  # noqa: E402
 from init_case import initialize  # noqa: E402
 from run_review import run as build_review  # noqa: E402
-from dashboard_model import build_dashboard  # noqa: E402
+from dashboard_model import _evaluator_summary, build_dashboard  # noqa: E402
 from history import history_init, history_promote, history_record  # noqa: E402
+from reliability import run_reliability  # noqa: E402
 from render_dashboard import render_dashboard  # noqa: E402
 
 
@@ -172,6 +173,35 @@ class DashboardModelTests(DashboardTestBase):
         champion_run_ids = {point["run_id"] for point in dashboard["trend"] if point["kind"] in {"anchor", "champion"}}
         self.assertNotIn(candidate["run_id"], champion_run_ids)
 
+    def test_auto_selection_ignores_candidates_from_previous_champion(self) -> None:
+        case_dir = self._prepare_case("dash-stale")
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        promoted = history_record(
+            case_dir, history_root=history_root, stage="candidate", label="First", agent_version="v2"
+        )
+        stale = history_record(
+            case_dir, history_root=history_root, stage="candidate", label="Recorded in parallel", agent_version="v3"
+        )
+        history_promote(promoted["run_id"], history_root=history_root)
+
+        dashboard = build_dashboard(history_root)
+        self.assertNotEqual(dashboard["state"]["selected_candidate_run_id"], stale["run_id"])
+        self.assertIsNone(dashboard["state"]["selected_candidate_run_id"])
+
+    def test_explicit_stale_candidate_is_not_comparable(self) -> None:
+        case_dir = self._prepare_case("dash-explicit-stale")
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        promoted = history_record(case_dir, history_root=history_root, stage="candidate", label="First", agent_version="v2")
+        stale = history_record(case_dir, history_root=history_root, stage="candidate", label="Parallel", agent_version="v3")
+        history_promote(promoted["run_id"], history_root=history_root)
+
+        dashboard = build_dashboard(history_root, candidate_run_id=stale["run_id"])
+        self.assertFalse(dashboard["comparability"]["comparable"])
+        self.assertIn("stale", dashboard["comparability"]["reasons"][0])
+        self.assertTrue(all(row["delta"] is None for row in dashboard["evaluators"]))
+
     def test_evaluator_means_use_only_numeric_scores(self) -> None:
         evaluators = [
             {"id": "execution-ok", "type": "no_execution_error", "required": True},
@@ -190,6 +220,20 @@ class DashboardModelTests(DashboardTestBase):
         self.assertIsNone(by_id["task-completion"]["champion_score"])
         self.assertIsNone(by_id["task-completion"]["candidate_score"])
         self.assertEqual(by_id["task-completion"]["cases_scored"], 0)
+
+    def test_evaluator_versions_are_separate_series(self) -> None:
+        summary = _evaluator_summary(
+            [
+                {
+                    "case_id": "c1",
+                    "evaluations": [
+                        {"evaluator_id": "quality", "evaluator_version": "1", "status": "pass", "score": 0.8},
+                        {"evaluator_id": "quality", "evaluator_version": "2", "status": "pass", "score": 0.9},
+                    ],
+                }
+            ]
+        )
+        self.assertEqual(set(summary), {("quality", "1"), ("quality", "2")})
 
     def test_regression_grouping_by_risk_and_tag(self) -> None:
         case_dir = self._prepare_case(
@@ -268,6 +312,7 @@ class DashboardRenderingSecurityTests(DashboardTestBase):
         self.assertIn('<title id="trend-title">', text)
         self.assertIn('<desc id="trend-desc">', text)
         self.assertIn('<details class="fallback">', text)
+        self.assertIn("v1 · deterministic", text)
 
     def test_review_and_comparison_links_are_relative(self) -> None:
         case_dir = self._prepare_case("dash-k")
@@ -301,6 +346,105 @@ class DashboardRenderingSecurityTests(DashboardTestBase):
         html_path = render_dashboard(dashboard, self.root / "out" / "dashboard.html")
         text = html_path.read_text(encoding="utf-8")
         self.assertIn("No detected regressions", text)
+
+
+def _raw_trials(agents_by_case: dict[str, list[list[str]]]) -> list[dict]:
+    records = []
+    for case_id, per_repetition_agents in agents_by_case.items():
+        for repetition, agents in enumerate(per_repetition_agents):
+            records.append(
+                {
+                    "case_id": case_id,
+                    "repetition": repetition,
+                    "observation_id": observation_id_for(case_id, repetition),
+                    "output": "ok",
+                    "agents": agents,
+                    "tool_calls": [],
+                    "error": None,
+                }
+            )
+    return records
+
+
+class DashboardReliabilityTests(DashboardTestBase):
+    def _prepare_case_with_reliability(
+        self,
+        name: str,
+        *,
+        baseline_trial_agents: dict[str, list[list[str]]],
+        candidate_trial_agents: dict[str, list[list[str]]],
+        reliability_config: dict | None = None,
+    ) -> Path:
+        case_dir = self._prepare_case(name)
+        write_jsonl(case_dir / "baseline.trials.raw.jsonl", _raw_trials(baseline_trial_agents))
+        write_jsonl(case_dir / "candidate.trials.raw.jsonl", _raw_trials(candidate_trial_agents))
+        evaluate_trials(case_dir, "baseline", overwrite=True)
+        evaluate_trials(case_dir, "candidate", overwrite=True)
+        suite = read_json(case_dir / "evaluation.json")
+        suite["reliability"] = reliability_config or {
+            "minimum_repetitions": 3,
+            "confidence_level": 0.95,
+            "bootstrap_samples": 500,
+            "minimum_probability_of_improvement": 0.9,
+            "maximum_flaky_case_rate": 0.5,
+        }
+        write_json(case_dir / "evaluation.json", suite)
+        reliability = run_reliability(case_dir)
+        write_json(case_dir / "reliability.json", reliability)
+        build_review(case_dir)
+        return case_dir
+
+    def test_no_trials_shows_one_run_only(self) -> None:
+        case_dir = self._prepare_case("dash-rel-a")
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+        dashboard = build_dashboard(history_root, candidate_run_id=candidate["run_id"])
+        self.assertFalse(dashboard["reliability"]["available"])
+        html_path = render_dashboard(dashboard, self.root / "out" / "dashboard.html")
+        text = html_path.read_text(encoding="utf-8")
+        self.assertIn("One run only", text)
+
+    def test_archived_trials_populate_reliability_panel(self) -> None:
+        case_dir = self._prepare_case_with_reliability(
+            "dash-rel-b",
+            baseline_trial_agents={"c1": [["a"], ["a"], [], ["a"], ["a"]], "c2": [["a"]] * 5, "c3": [["a"]] * 5, "c4": [[]] * 5},
+            candidate_trial_agents={"c1": [["a"]] * 5, "c2": [["a"]] * 5, "c3": [["a"]] * 5, "c4": [["a"]] * 5},
+        )
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+        dashboard = build_dashboard(history_root, candidate_run_id=candidate["run_id"])
+        self.assertTrue(dashboard["reliability"]["available"])
+        self.assertIn({"case_id": "c1", "risk": "medium"}, dashboard["reliability"]["flaky_cases"])
+        self.assertIsNotNone(dashboard["kpis"]["probability_of_improvement"])
+
+        html_path = render_dashboard(dashboard, self.root / "out" / "dashboard.html")
+        text = html_path.read_text(encoding="utf-8")
+        self.assertIn("Flaky cases", text)
+        self.assertIn(">c1<", text)
+        self.assertIn("P(candidate&gt;baseline)", text)
+
+    def test_malicious_evaluator_id_in_reliability_is_escaped(self) -> None:
+        case_dir = self._prepare_case_with_reliability(
+            "dash-rel-c",
+            baseline_trial_agents={"c1": [["a"], []], "c2": [["a"]] * 2, "c3": [["a"]] * 2, "c4": [[]] * 2},
+            candidate_trial_agents={"c1": [["a"]] * 2, "c2": [["a"]] * 2, "c3": [["a"]] * 2, "c4": [["a"]] * 2},
+        )
+        history_root = self.root / "aik-history"
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+        candidate = history_record(case_dir, history_root=history_root, stage="candidate", label="Candidate", agent_version="v2")
+        reliability_path = history_root / "runs" / candidate["run_id"] / "reliability.json"
+        reliability = read_json(reliability_path)
+        reliability["comparison"]["incompatible_evaluators"] = [
+            {"evaluator_id": "<script>alert(1)</script>", "baseline_versions": ["1"], "candidate_versions": ["2"]}
+        ]
+        write_json(reliability_path, reliability)
+        dashboard = build_dashboard(history_root, candidate_run_id=candidate["run_id"])
+        html_path = render_dashboard(dashboard, self.root / "out" / "dashboard.html")
+        text = html_path.read_text(encoding="utf-8")
+        self.assertNotIn("<script>alert(1)</script>", text)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", text)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any, Sequence
 
-from common import DataError, index_by, read_jsonl, write_jsonl
+from common import DataError, index_by, observation_id_for, observation_sort_key, read_jsonl, select_cases, write_jsonl
 
 
 STAGES = ("baseline", "candidate")
@@ -33,12 +33,16 @@ def _run_one(
     command: Sequence[str],
     timeout_seconds: float,
     cwd: Path,
+    *,
+    repetition: int | None = None,
 ) -> tuple[dict[str, Any], bool]:
     case_id = case["id"]
     payload = {"protocol_version": "1.1", "stage": stage, "case": case}
     environment = os.environ.copy()
     environment["AIK_STAGE"] = stage
     environment["AIK_CASE_ID"] = case_id
+    if repetition is not None:
+        environment["AIK_REPETITION"] = str(repetition)
     started = time.monotonic()
     try:
         completed = subprocess.run(
@@ -99,6 +103,7 @@ def execute(
     resume: bool = False,
     overwrite: bool = False,
     runner_cwd: str | Path | None = None,
+    repetitions: int = 1,
 ) -> dict[str, Any]:
     if stage not in STAGES:
         raise DataError(f"Stage must be one of: {', '.join(STAGES)}")
@@ -108,29 +113,34 @@ def execute(
         raise DataError("Timeout must be greater than zero")
     if resume and overwrite:
         raise DataError("Use either resume or overwrite, not both")
+    if repetitions < 1:
+        raise DataError("Repetitions must be at least 1")
 
     directory = Path(case_dir).resolve()
     cases = read_jsonl(directory / "test_cases.jsonl", "id")
-    known_ids = {case["id"] for case in cases}
-    unknown_ids = (selected_ids or set()) - known_ids
-    if unknown_ids:
-        raise DataError(f"Unknown selected case IDs: {', '.join(sorted(unknown_ids))}")
-
-    selected: list[dict[str, Any]] = []
-    for case in cases:
-        if selected_ids and case["id"] not in selected_ids:
-            continue
-        tags = set(case.get("tags", [])) if isinstance(case.get("tags"), list) else set()
-        if selected_tags and not (tags & selected_tags):
-            continue
-        selected.append(case)
-    if not selected:
-        raise DataError("No test cases matched the selected IDs and tags")
+    selected = select_cases(cases, selected_ids, selected_tags)
 
     working_directory = Path(runner_cwd or Path.cwd()).resolve()
     if not working_directory.is_dir():
         raise DataError(f"Runner working directory not found: {working_directory}")
 
+    if repetitions == 1:
+        return _execute_single(directory, stage, command, timeout_seconds, selected, resume, overwrite, working_directory)
+    return _execute_trials(
+        directory, stage, command, timeout_seconds, selected, resume, overwrite, working_directory, repetitions
+    )
+
+
+def _execute_single(
+    directory: Path,
+    stage: str,
+    command: Sequence[str],
+    timeout_seconds: float,
+    selected: list[dict[str, Any]],
+    resume: bool,
+    overwrite: bool,
+    working_directory: Path,
+) -> dict[str, Any]:
     legacy_destination = directory / f"{stage}.jsonl"
     destination = directory / f"{stage}.raw.jsonl" if (directory / "evaluation.json").exists() else legacy_destination
     existing = read_jsonl(destination, "case_id") if destination.exists() else []
@@ -165,6 +175,65 @@ def execute(
         "stage": stage,
         "destination": destination,
         "selected": len(selected),
+        "repetitions": 1,
+        "executed": executed,
+        "skipped": skipped,
+        "execution_errors": execution_errors,
+    }
+
+
+def _execute_trials(
+    directory: Path,
+    stage: str,
+    command: Sequence[str],
+    timeout_seconds: float,
+    selected: list[dict[str, Any]],
+    resume: bool,
+    overwrite: bool,
+    working_directory: Path,
+    repetitions: int,
+) -> dict[str, Any]:
+    destination = directory / f"{stage}.trials.raw.jsonl"
+    existing = read_jsonl(destination, "observation_id") if destination.exists() else []
+    if existing and not resume and not overwrite:
+        raise DataError(f"{destination.name} already contains results; use --resume or --overwrite")
+    results = [] if overwrite else list(existing)
+    result_index = index_by(results, "observation_id")
+
+    executed = skipped = execution_errors = 0
+    for case in selected:
+        case_id = case["id"]
+        for repetition in range(repetitions):
+            observation_id = observation_id_for(case_id, repetition)
+            if resume and observation_id in result_index:
+                skipped += 1
+                continue
+            result, had_execution_error = _run_one(
+                case, stage, command, timeout_seconds, working_directory, repetition=repetition
+            )
+            result["repetition"] = repetition
+            result["observation_id"] = observation_id
+            result_index[observation_id] = result
+            results = [result_index[key] for key in sorted(result_index, key=observation_sort_key)]
+            write_jsonl(destination, results)
+            executed += 1
+            execution_errors += int(had_execution_error)
+            if had_execution_error:
+                state = "ERROR"
+            elif result.get("passed") is True:
+                state = "LEGACY PASS"
+            elif result.get("passed") is False:
+                state = "LEGACY FAIL"
+            else:
+                state = "RECORDED"
+            print(f"{observation_id}: {state}")
+
+    return {
+        "stage": stage,
+        "destination": destination,
+        "selected": len(selected),
+        "repetitions": repetitions,
+        "observations_selected": len(selected) * repetitions,
         "executed": executed,
         "skipped": skipped,
         "execution_errors": execution_errors,
@@ -185,6 +254,7 @@ def main() -> int:
     mode.add_argument("--resume", action="store_true")
     mode.add_argument("--overwrite", action="store_true")
     parser.add_argument("--cwd")
+    parser.add_argument("--repetitions", type=int, default=1)
     raw_arguments = sys.argv[1:]
     command: list[str] = []
     if "--" in raw_arguments:
@@ -203,6 +273,7 @@ def main() -> int:
             resume=args.resume,
             overwrite=args.overwrite,
             runner_cwd=args.cwd,
+            repetitions=args.repetitions,
         )
     except DataError as exc:
         parser.error(str(exc))

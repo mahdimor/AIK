@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from common import DataError, fingerprint, hash_file, read_json, read_jsonl, write_json, write_jsonl
+from reliability import reliability_acceptance
 from validate_case import validate as validate_case_artifacts
 
 
@@ -26,7 +27,7 @@ FORMAT_VERSION = "1.0"
 ROLES = {"anchor", "candidate", "champion", "cohort_anchor"}
 ARCHIVABLE_ROLES = {"anchor", "candidate", "cohort_anchor"}
 ACCEPTED_DECISIONS = {"accepted", "accepted_with_conditions"}
-ARCHIVE_OPTIONAL = ("comparison.json", "decision.yaml", "review.html")
+ARCHIVE_OPTIONAL = ("comparison.json", "decision.yaml", "review.html", "reliability.json")
 _RUN_ID_PATTERN = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
 
 
@@ -62,6 +63,24 @@ def _stage_evaluated_path(directory: Path, stage: str) -> Path | None:
 def cohort_id_for(dataset_fingerprint: str, evaluator_fingerprint: str) -> str:
     payload = f"{dataset_fingerprint}\n{evaluator_fingerprint}".encode("utf-8")
     return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def _reliability_summary(reliability: dict[str, Any]) -> dict[str, Any]:
+    """Small, re-derivable cache of an archived reliability.json for cheap display.
+
+    Never authoritative by itself: verify_run_integrity re-derives this from
+    the archived reliability.json artifact on every check, so editing this
+    cache alone (without the underlying evidence) is always detected.
+    """
+    comparison = reliability.get("comparison", {})
+    statistical = reliability_acceptance(reliability)
+    return {
+        "recommendation": statistical.get("recommendation"),
+        "paired_cases": comparison.get("paired_cases"),
+        "probability_of_improvement": comparison.get("probability_of_improvement"),
+        "pass_rate_delta": comparison.get("pass_rate_delta"),
+        "flaky_case_count": len(comparison.get("flaky_cases", []) or []),
+    }
 
 
 def parse_metadata(pairs: list[str] | None) -> dict[str, str]:
@@ -263,11 +282,14 @@ def _archive_run(
 
     acceptance_recommendation = None
     human_decision = None
+    reliability_summary = None
     if role != "anchor":
         comparison = read_json(files["comparison.json"]) if "comparison.json" in files else None
         if isinstance(comparison, dict) and isinstance(comparison.get("acceptance"), dict):
             acceptance_recommendation = comparison["acceptance"].get("recommendation")
         human_decision = _decision_status(files["decision.yaml"]) if "decision.yaml" in files else None
+        if "reliability.json" in files:
+            reliability_summary = _reliability_summary(read_json(files["reliability.json"]))
 
     try:
         source_relative = str(source_dir.relative_to(Path.cwd()))
@@ -295,6 +317,7 @@ def _archive_run(
         "pass_rate": stage_metrics["pass_rate"],
         "acceptance_recommendation": acceptance_recommendation,
         "human_decision": human_decision,
+        "reliability": reliability_summary,
         "artifacts": artifact_hashes,
         "metadata": metadata or {},
     }
@@ -340,6 +363,9 @@ def verify_run_integrity(history_root: str | Path, run_id: str) -> list[str]:
     problems: list[str] = []
     actual_hashes: dict[str, str] = {}
     for name, recorded_hash in artifacts.items():
+        if not isinstance(name, str) or Path(name).name != name or name == "manifest.json":
+            problems.append(f"{run_id}: manifest contains an unsafe artifact name: {name!r}")
+            continue
         artifact_path = run_dir / name
         if not artifact_path.exists() or artifact_path.is_symlink() or not artifact_path.is_file():
             problems.append(f"{run_id}/{name}: archived artifact is missing")
@@ -354,9 +380,133 @@ def verify_run_integrity(history_root: str | Path, run_id: str) -> list[str]:
         if manifest.get("snapshot_fingerprint") != recomputed_snapshot:
             problems.append(f"{run_id}: snapshot_fingerprint does not match archived artifacts")
 
+    # Manifest fields used by promotion are caches, not independent evidence.
+    # Re-derive them from the content-hashed artifacts so editing manifest.json
+    # alone can never turn a pending/rejected run into an accepted one.
+    if not problems:
+        try:
+            evaluated = read_jsonl(run_dir / "evaluated.jsonl", "case_id")
+            dataset_fp, evaluator_fp = _evaluated_fingerprints(evaluated)
+            metrics = _stage_metrics(evaluated)
+            derived = {
+                "dataset_fingerprint": dataset_fp,
+                "evaluator_fingerprint": evaluator_fp,
+                "cohort_id": cohort_id_for(dataset_fp, evaluator_fp),
+                **metrics,
+            }
+            for field, expected in derived.items():
+                if manifest.get(field) != expected:
+                    problems.append(f"{run_id}: manifest {field} does not match archived evaluated evidence")
+
+            if manifest.get("role") != "anchor":
+                comparison_path = run_dir / "comparison.json"
+                decision_path = run_dir / "decision.yaml"
+                comparison = read_json(comparison_path) if comparison_path.exists() else None
+                acceptance = comparison.get("acceptance") if isinstance(comparison, dict) else None
+                recommendation = acceptance.get("recommendation") if isinstance(acceptance, dict) else None
+                human_decision = _decision_status(decision_path) if decision_path.exists() else None
+                if manifest.get("acceptance_recommendation") != recommendation:
+                    problems.append(
+                        f"{run_id}: manifest acceptance_recommendation does not match archived comparison.json"
+                    )
+                if manifest.get("human_decision") != human_decision:
+                    problems.append(f"{run_id}: manifest human_decision does not match archived decision.yaml")
+
+                reliability_path = run_dir / "reliability.json"
+                expected_reliability = _reliability_summary(read_json(reliability_path)) if reliability_path.exists() else None
+                if manifest.get("reliability") != expected_reliability:
+                    problems.append(
+                        f"{run_id}: manifest reliability summary does not match archived reliability.json (tampered statistics)"
+                    )
+        except (DataError, OSError) as exc:
+            problems.append(f"{run_id}: cannot derive manifest evidence: {exc}")
+
     for extra in run_dir.iterdir():
         if extra.name != "manifest.json" and extra.name not in artifacts:
             problems.append(f"{run_id}/{extra.name}: unexpected file not recorded in manifest")
+    return problems
+
+
+def _records_by_case(records: list[dict[str, Any]], source: str) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for record in records:
+        case_id = record.get("case_id")
+        if not isinstance(case_id, str) or not case_id:
+            raise DataError(f"{source} contains a record without a valid case_id")
+        if case_id in result:
+            raise DataError(f"{source} contains duplicate case_id '{case_id}'")
+        result[case_id] = record
+    return result
+
+
+def _comparison_side(comparison: dict[str, Any], side: str) -> dict[str, dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    items = comparison.get("items")
+    if not isinstance(items, list):
+        raise DataError("Archived comparison.json has no valid items array")
+    for item in items:
+        record = item.get(side) if isinstance(item, dict) else None
+        if not isinstance(record, dict):
+            raise DataError(f"Archived comparison.json has an item without {side} evidence")
+        records.append(record)
+    return _records_by_case(records, f"comparison.json {side}")
+
+
+def _behavior_signature(records: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Comparable outcomes, excluding run-specific timing and stage metadata."""
+    result: dict[str, dict[str, Any]] = {}
+    for case_id, record in records.items():
+        evaluations: list[dict[str, Any]] = []
+        for evaluation in record.get("evaluations", []):
+            if not isinstance(evaluation, dict):
+                continue
+            evaluations.append(
+                {
+                    "evaluator_id": evaluation.get("evaluator_id"),
+                    "evaluator_version": str(evaluation.get("evaluator_version", "1")),
+                    "status": evaluation.get("status"),
+                    "score": evaluation.get("score"),
+                }
+            )
+        evaluations.sort(key=lambda item: (str(item["evaluator_id"]), item["evaluator_version"]))
+        result[case_id] = {
+            "passed": record.get("passed"),
+            "verdict": record.get("verdict"),
+            "contracts": record.get("contracts"),
+            "scores": record.get("scores"),
+            "evaluations": evaluations,
+        }
+    return result
+
+
+def _verify_candidate_comparison(
+    history_root: str | Path,
+    candidate_run_id: str,
+    reference_run_id: str,
+) -> list[str]:
+    """Prove that a comparison used the archived candidate and active reference."""
+    paths = _history_paths(history_root)
+    candidate_dir = paths["runs"] / candidate_run_id
+    reference_dir = paths["runs"] / reference_run_id
+    problems: list[str] = []
+    try:
+        comparison = read_json(candidate_dir / "comparison.json")
+        compared_candidate = _comparison_side(comparison, "candidate")
+        compared_baseline = _comparison_side(comparison, "baseline")
+        archived_candidate = _records_by_case(
+            read_jsonl(candidate_dir / "evaluated.jsonl", "case_id"), "candidate evaluated.jsonl"
+        )
+        archived_reference = _records_by_case(
+            read_jsonl(reference_dir / "evaluated.jsonl", "case_id"), "reference evaluated.jsonl"
+        )
+        if compared_candidate != archived_candidate:
+            problems.append("comparison.json candidate evidence does not match the archived candidate run")
+        if _behavior_signature(compared_baseline) != _behavior_signature(archived_reference):
+            problems.append(
+                "comparison.json baseline evidence does not match the accepted outcomes of the current champion or cohort anchor"
+            )
+    except (DataError, OSError) as exc:
+        problems.append(f"comparison evidence cannot be verified: {exc}")
     return problems
 
 
@@ -504,6 +654,7 @@ def history_promote(
 
     champion_manifest = load_manifest(history_root, champion_run_id)
     cohort_anchor: dict[str, Any] | None = None
+    comparison_reference_run_id = champion_run_id
     if manifest.get("cohort_id") != champion_manifest.get("cohort_id"):
         cohort_anchor = _find_valid_cohort_anchor(history_root, champion_run_id, champion_manifest, manifest.get("cohort_id"))
         if cohort_anchor is None:
@@ -513,6 +664,11 @@ def history_promote(
             )
         if cohort_anchor.get("dataset_fingerprint") != manifest.get("dataset_fingerprint"):
             raise DataError("The cohort anchor does not represent the same dataset evidence as the candidate")
+        comparison_reference_run_id = cohort_anchor["run_id"]
+
+    comparison_problems = _verify_candidate_comparison(history_root, run_id, comparison_reference_run_id)
+    if comparison_problems:
+        raise DataError("Cannot promote untrusted comparison evidence: " + "; ".join(comparison_problems))
 
     if manifest.get("acceptance_recommendation") != "eligible":
         raise DataError(
@@ -642,6 +798,29 @@ def history_validate(history_root: str | Path = "aik-history") -> tuple[list[str
                     f"events.jsonl: champion_promoted event for {run_ref} has a dangling "
                     f"previous_champion_run_id {event.get('previous_champion_run_id')}"
                 )
+            if run_ref in manifests and replayed_champion in manifests:
+                promoted_manifest = manifests[run_ref]
+                previous_manifest = manifests[replayed_champion]
+                reference_run_id = replayed_champion
+                if promoted_manifest.get("cohort_id") != previous_manifest.get("cohort_id"):
+                    cohort_anchor = _find_valid_cohort_anchor(
+                        history_root,
+                        replayed_champion,
+                        previous_manifest,
+                        promoted_manifest.get("cohort_id"),
+                    )
+                    if cohort_anchor is None:
+                        errors.append(f"{run_ref}: promoted run has no valid comparable cohort anchor")
+                        reference_run_id = None
+                    else:
+                        reference_run_id = cohort_anchor["run_id"]
+                if reference_run_id:
+                    errors.extend(
+                        f"{run_ref}: {problem}"
+                        for problem in _verify_candidate_comparison(history_root, run_ref, reference_run_id)
+                    )
+                if event.get("human_decision") != promoted_manifest.get("human_decision"):
+                    errors.append(f"{run_ref}: promotion event decision does not match archived decision evidence")
             replayed_champion = run_ref
         elif event_type == "cohort_anchor_recorded":
             pass

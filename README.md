@@ -129,6 +129,40 @@ which archives the anchor, shows a pending decision correctly blocking promotion
 accepts and promotes the candidate, and generates
 `examples/langgraph-multi-agent/history-demo/aik-history/dashboard.html`.
 
+## Statistical reliability
+
+One run cannot tell you whether an improvement is repeatable or agent/LLM-judge
+noise. Repeat it and measure:
+
+```bash
+python aik.py run improvements/my-agent-failure --stage baseline --repetitions 5 -- python path/to/my_runner.py
+python aik.py run improvements/my-agent-failure --stage candidate --repetitions 5 -- python path/to/my_runner.py
+python aik.py evaluate improvements/my-agent-failure --stage baseline --trials
+python aik.py evaluate improvements/my-agent-failure --stage candidate --trials
+python aik.py reliability improvements/my-agent-failure
+python aik.py review improvements/my-agent-failure
+```
+
+`--repetitions` defaults to `1` and is unchanged from Sprint 4/5 at that default.
+`aik reliability` computes pass rate, a Wilson confidence interval, a deterministic
+seeded bootstrap for the delta and `P(candidate > baseline)`, flaky cases, and
+evaluator version incompatibilities — standard-library only, and it never converts a
+missing or errored observation into a zero score. An optional `reliability` block in
+`evaluation.json` can gate acceptance on this evidence, but a statistical result can
+never override a deterministic rejection, and insufficient evidence can only push a
+recommendation toward `manual_review`, never toward `eligible`. See
+[the reliability reference](.agents/skills/improve-agent/references/statistical-reliability.md).
+Try the included offline demo:
+
+```bash
+python examples/langgraph-multi-agent/history-demo/build_reliability_demo.py
+```
+
+which runs a small suite through the real runner bridge with `--repetitions`, computes
+`reliability.json`, and shows a case that looks like a clean improvement on a single
+run but is correctly withheld from promotion because the repeated trials do not meet
+the configured probability threshold.
+
 ## What is tracked
 
 Every test case is classified as:
@@ -165,6 +199,7 @@ python -m unittest discover -s tests -v
 python aik.py validate examples/support-agent/confirmation-before-action
 python aik.py history validate
 python aik.py dashboard
+python aik.py --version
 ```
 
 MIT licensed. Python 3.10+.

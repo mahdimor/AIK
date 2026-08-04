@@ -249,6 +249,18 @@ class HistoryPromotionTests(HistoryTestBase):
         with self.assertRaises(DataError):
             history_promote(candidate["run_id"], history_root=history_root)
 
+    def test_manifest_cannot_override_archived_human_decision(self) -> None:
+        history_root, _anchor, candidate = self._init_and_candidate("promo-manifest", decision="pending")
+        manifest_path = history_root / "runs" / candidate["run_id"] / "manifest.json"
+        manifest = read_json(manifest_path)
+        manifest["human_decision"] = "accepted"
+        write_json(manifest_path, manifest)
+
+        problems = verify_run_integrity(history_root, candidate["run_id"])
+        self.assertTrue(any("human_decision" in problem for problem in problems))
+        with self.assertRaises(DataError):
+            history_promote(candidate["run_id"], history_root=history_root)
+
     def test_rejected_human_decision_fails(self) -> None:
         history_root, _anchor, candidate = self._init_and_candidate("promo-c", decision="rejected")
         with self.assertRaises(DataError):
@@ -323,6 +335,31 @@ class HistoryPromotionTests(HistoryTestBase):
         self.assertEqual(result["cohort_anchor_run_id"], cohort_anchor["run_id"])
         self.assertEqual(load_state(history_root)["anchor_run_id"], anchor["run_id"])
 
+    def test_candidate_cannot_use_weaker_baseline_than_current_champion(self) -> None:
+        history_root = self.root / "aik-history-promo-weak-baseline"
+        champion_case = self._prepare_case(
+            "promo-strong-champion",
+            decision="accepted",
+            baseline_agents={"c1": ["a"], "c2": ["a"], "c3": ["a"], "c4": ["a"]},
+        )
+        candidate_case = self._prepare_case(
+            "promo-weak-reference",
+            decision="accepted",
+            baseline_agents={"c1": ["a"], "c2": ["a"], "c3": [], "c4": []},
+            candidate_agents={"c1": ["a"], "c2": ["a"], "c3": ["a"], "c4": []},
+        )
+        champion = history_init(
+            champion_case, history_root=history_root, stage="baseline", label="Strong champion", agent_version="v1"
+        )
+        candidate = history_record(
+            candidate_case, history_root=history_root, stage="candidate", label="Regressing candidate", agent_version="v2"
+        )
+        self.assertEqual(champion["pass_rate"], 1.0)
+        self.assertEqual(candidate["pass_rate"], 0.75)
+        self.assertEqual(candidate["acceptance_recommendation"], "eligible")
+        with self.assertRaisesRegex(DataError, "baseline evidence"):
+            history_promote(candidate["run_id"], history_root=history_root)
+
     def test_corrupted_snapshot_fails(self) -> None:
         history_root = self.root / "aik-history-promo-i"
         case_dir = self._prepare_case("promo-i", decision="accepted")
@@ -337,7 +374,11 @@ class HistoryPromotionTests(HistoryTestBase):
     def test_anchor_pointer_is_stable_across_multiple_promotions(self) -> None:
         history_root = self.root / "aik-history-promo-j"
         case_a = self._prepare_case("promo-j-a", decision="accepted")
-        case_b = self._prepare_case("promo-j-b", decision="accepted")
+        case_b = self._prepare_case(
+            "promo-j-b",
+            decision="accepted",
+            baseline_agents={"c1": ["a"], "c2": ["a"], "c3": ["a"], "c4": ["a"]},
+        )
         anchor = history_init(case_a, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
         candidate1 = history_record(case_a, history_root=history_root, stage="candidate", label="First", agent_version="v2")
         history_promote(candidate1["run_id"], history_root=history_root)

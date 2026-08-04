@@ -1,0 +1,343 @@
+{
+  "format_version": "1.0",
+  "generated_at": "2026-08-04T18:43:07.716210+00:00",
+  "inputs": {
+    "test_cases": "test_cases.jsonl",
+    "baseline": "baseline.evaluated.jsonl",
+    "candidate": "candidate.evaluated.jsonl"
+  },
+  "summary": {
+    "improved": 1,
+    "regressed": 0,
+    "unchanged": 1,
+    "not_comparable": 0,
+    "total": 2
+  },
+  "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+  "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+  "compatibility_warnings": [],
+  "acceptance": {
+    "recommendation": "manual_review",
+    "reasons": [
+      "All configured acceptance gates passed",
+      "Probability of improvement 0.749 is below the configured threshold 0.900"
+    ],
+    "metrics": {
+      "baseline_pass_rate": 0.5,
+      "candidate_pass_rate": 1.0,
+      "delta": 0.5
+    },
+    "policy": {
+      "reject_on_evaluator_error": true,
+      "no_regression_at_or_above_risk": "high",
+      "critical_cases_must_pass": true,
+      "maximum_regressions": 0,
+      "minimum_candidate_pass_rate": 0.0,
+      "minimum_delta": 0.0
+    },
+    "deterministic_recommendation": "eligible",
+    "statistical_reliability": {
+      "recommendation": "manual_review",
+      "reasons": [
+        "Probability of improvement 0.749 is below the configured threshold 0.900"
+      ],
+      "paired_cases": 2,
+      "probability_of_improvement": 0.749,
+      "pass_rate_delta": 0.083333,
+      "bootstrap_ci": [
+        0.0,
+        0.166666
+      ],
+      "flaky_cases": [
+        "intermittent-billing-routing"
+      ]
+    }
+  },
+  "items": [
+    {
+      "case_id": "stable-greeting",
+      "description": "A plain greeting never needs a specialist",
+      "tags": [
+        "routing",
+        "negative"
+      ],
+      "risk": "low",
+      "status": "unchanged",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "forbidden-agents": 0.0
+      },
+      "contract_changes": {},
+      "baseline": {
+        "agents": [],
+        "case_id": "stable-greeting",
+        "contracts": {
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "not_applicable"
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+          "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "deterministic",
+            "reason": "No required_agents expectation",
+            "status": "not_applicable"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": []
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 69,
+          "exit_code": 0
+        },
+        "output": "baseline:stable-greeting:repetition-0",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0
+        },
+        "tool_calls": [],
+        "verdict": "pass"
+      },
+      "candidate": {
+        "agents": [],
+        "case_id": "stable-greeting",
+        "contracts": {
+          "execution-ok": "pass",
+          "forbidden-agents": "pass",
+          "required-agents": "not_applicable"
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+          "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "deterministic",
+            "reason": "No required_agents expectation",
+            "status": "not_applicable"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": []
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 70,
+          "exit_code": 0
+        },
+        "output": "candidate:stable-greeting:repetition-0",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "forbidden-agents": 1.0
+        },
+        "tool_calls": [],
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "intermittent-billing-routing",
+      "description": "A billing request must reach the billing specialist",
+      "tags": [
+        "billing",
+        "routing"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "required-agents": 1.0
+      },
+      "contract_changes": {
+        "required-agents": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "agents": [],
+        "case_id": "intermittent-billing-routing",
+        "contracts": {
+          "execution-ok": "pass",
+          "forbidden-agents": "not_applicable",
+          "required-agents": "fail"
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+          "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+          "stage": "baseline"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": []
+            },
+            "kind": "deterministic",
+            "reason": "Required values missing: billing-agent",
+            "score": 0.0,
+            "status": "fail"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "deterministic",
+            "reason": "No forbidden_agents expectation",
+            "status": "not_applicable"
+          }
+        ],
+        "execution": {
+          "duration_ms": 70,
+          "exit_code": 0
+        },
+        "output": "baseline:intermittent-billing-routing:repetition-0",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "required-agents": 0.0
+        },
+        "tool_calls": [],
+        "verdict": "fail"
+      },
+      "candidate": {
+        "agents": [
+          "billing-agent"
+        ],
+        "case_id": "intermittent-billing-routing",
+        "contracts": {
+          "execution-ok": "pass",
+          "forbidden-agents": "not_applicable",
+          "required-agents": "pass"
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:2d76a6739d00b646e05c6de0797ca25de7d8d6076819be3e145fcdd4d9e2c345",
+          "evaluator_fingerprint": "sha256:02e355022a9569f2a1c743d1c9772a9e2f04b721ad49105ca9cfd946e00e1ca7",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "required-agents",
+            "evaluator_version": "1",
+            "evidence": {
+              "expected": [
+                "billing-agent"
+              ],
+              "observed": [
+                "billing-agent"
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "forbidden-agents",
+            "evaluator_version": "1",
+            "evidence": {},
+            "kind": "deterministic",
+            "reason": "No forbidden_agents expectation",
+            "status": "not_applicable"
+          }
+        ],
+        "execution": {
+          "duration_ms": 71,
+          "exit_code": 0
+        },
+        "output": "candidate:intermittent-billing-routing:repetition-0",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "required-agents": 1.0
+        },
+        "tool_calls": [],
+        "verdict": "pass"
+      }
+    }
+  ]
+}

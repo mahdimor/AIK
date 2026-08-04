@@ -50,9 +50,19 @@ def _level_denominator(manifest: dict[str, Any] | None) -> int | None:
     return manifest.get("passed", 0) + manifest.get("failed", 0)
 
 
-def _latest_unpromoted_candidate(manifests: dict[str, dict[str, Any]], champion_run_id: str | None) -> str | None:
-    candidates = [run_id for run_id, manifest in manifests.items() if manifest.get("role") == "candidate" and run_id != champion_run_id]
-    return max(candidates) if candidates else None
+def _latest_unpromoted_candidate(
+    manifests: dict[str, dict[str, Any]], events: list[dict[str, Any]], champion_run_id: str | None
+) -> str | None:
+    promoted = {event.get("run_id") for event in events if event.get("type") == "champion_promoted"}
+    candidates = [
+        run_id
+        for run_id, manifest in manifests.items()
+        if manifest.get("role") == "candidate"
+        and run_id not in promoted
+        and run_id != champion_run_id
+        and manifest.get("parent_champion_run_id") == champion_run_id
+    ]
+    return max(candidates, key=lambda run_id: (str(manifests[run_id].get("recorded_at", "")), run_id)) if candidates else None
 
 
 def _comparability(
@@ -70,6 +80,13 @@ def _comparability(
             "cohort_id": champion_manifest.get("cohort_id"),
             "cohort_anchor_run_id": None,
             "reasons": ["No candidate is selected"],
+        }
+    if candidate_manifest.get("parent_champion_run_id") != champion_run_id:
+        return {
+            "comparable": False,
+            "cohort_id": candidate_manifest.get("cohort_id"),
+            "cohort_anchor_run_id": None,
+            "reasons": ["Selected candidate was recorded against a different champion and is stale"],
         }
     if candidate_manifest.get("cohort_id") == champion_manifest.get("cohort_id"):
         return {"comparable": True, "cohort_id": candidate_manifest.get("cohort_id"), "cohort_anchor_run_id": None, "reasons": []}
@@ -209,8 +226,8 @@ def _regressions(history_root: str | Path, candidate_run_id: str | None, compara
     }
 
 
-def _evaluator_summary(records: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
-    summary: dict[str, dict[str, Any]] = {}
+def _evaluator_summary(records: list[dict[str, Any]] | None) -> dict[tuple[str, str], dict[str, Any]]:
+    summary: dict[tuple[str, str], dict[str, Any]] = {}
     for record in records or []:
         for evaluation in record.get("evaluations", []):
             if not isinstance(evaluation, dict):
@@ -218,7 +235,9 @@ def _evaluator_summary(records: list[dict[str, Any]] | None) -> dict[str, dict[s
             evaluator_id = evaluation.get("evaluator_id")
             if not evaluator_id:
                 continue
-            entry = summary.setdefault(evaluator_id, {"kind": evaluation.get("kind"), "pass": 0, "fail": 0, "error": 0, "not_applicable": 0, "scores": []})
+            evaluator_version = str(evaluation.get("evaluator_version", "1"))
+            key = (str(evaluator_id), evaluator_version)
+            entry = summary.setdefault(key, {"kind": evaluation.get("kind"), "pass": 0, "fail": 0, "error": 0, "not_applicable": 0, "scores": []})
             status = evaluation.get("status")
             if status in {"pass", "fail", "error", "not_applicable"}:
                 entry[status] += 1
@@ -228,23 +247,30 @@ def _evaluator_summary(records: list[dict[str, Any]] | None) -> dict[str, dict[s
     return summary
 
 
-def _evaluators_panel(history_root: str | Path, champion_run_id: str | None, candidate_run_id: str | None) -> list[dict[str, Any]]:
-    champion_records = _optional_jsonl(_run_dir(history_root, champion_run_id) / "evaluated.jsonl", "case_id") if champion_run_id else None
+def _evaluators_panel(
+    history_root: str | Path,
+    reference_run_id: str | None,
+    candidate_run_id: str | None,
+    comparable: bool,
+) -> list[dict[str, Any]]:
+    champion_records = _optional_jsonl(_run_dir(history_root, reference_run_id) / "evaluated.jsonl", "case_id") if reference_run_id else None
     candidate_records = _optional_jsonl(_run_dir(history_root, candidate_run_id) / "evaluated.jsonl", "case_id") if candidate_run_id else None
     champion_summary = _evaluator_summary(champion_records)
     candidate_summary = _evaluator_summary(candidate_records)
     rows: list[dict[str, Any]] = []
-    for evaluator_id in sorted(set(champion_summary) | set(candidate_summary)):
-        champ = champion_summary.get(evaluator_id, {})
-        cand = candidate_summary.get(evaluator_id, {})
+    for evaluator_id, evaluator_version in sorted(set(champion_summary) | set(candidate_summary)):
+        key = (evaluator_id, evaluator_version)
+        champ = champion_summary.get(key, {})
+        cand = candidate_summary.get(key, {})
         champ_scores = champ.get("scores", [])
         cand_scores = cand.get("scores", [])
         champ_mean = round(sum(champ_scores) / len(champ_scores), 6) if champ_scores else None
         cand_mean = round(sum(cand_scores) / len(cand_scores), 6) if cand_scores else None
-        delta = round(cand_mean - champ_mean, 6) if champ_mean is not None and cand_mean is not None else None
+        delta = round(cand_mean - champ_mean, 6) if comparable and champ_mean is not None and cand_mean is not None else None
         rows.append(
             {
                 "evaluator_id": evaluator_id,
+                "evaluator_version": evaluator_version,
                 "kind": cand.get("kind") or champ.get("kind"),
                 "champion_score": champ_mean,
                 "candidate_score": cand_mean,
@@ -317,6 +343,49 @@ def _coverage(history_root: str | Path, run_id: str | None) -> dict[str, Any]:
     }
 
 
+def _reliability_block(history_root: str | Path, candidate_run_id: str | None) -> dict[str, Any]:
+    """Statistical reliability for the selected candidate, if `aik reliability` was
+    run and archived before this candidate was recorded. Never fabricates a
+    confidence interval or probability when the evidence does not support one."""
+    if not candidate_run_id:
+        return {"available": False, "reason": "No candidate is selected"}
+    reliability = _optional_json(_run_dir(history_root, candidate_run_id) / "reliability.json")
+    if not reliability:
+        return {"available": False, "reason": "No repeated-trial reliability report was archived for this candidate"}
+
+    risk_map: dict[str, str] = {}
+    cases = _optional_jsonl(_run_dir(history_root, candidate_run_id) / "test_cases.jsonl", "id") or []
+    for case in cases:
+        risk_map[str(case.get("id"))] = str(case.get("risk", "medium"))
+
+    comparison = reliability.get("comparison", {})
+    flaky = sorted(
+        comparison.get("flaky_cases", []),
+        key=lambda case_id: (RISK_ORDER.get(risk_map.get(case_id, "medium"), 2), case_id),
+    )
+    flaky_with_risk = [{"case_id": case_id, "risk": risk_map.get(case_id, "medium")} for case_id in flaky]
+
+    unstable_evaluators: list[dict[str, Any]] = []
+    for stage_name in ("baseline", "candidate"):
+        for key, entry in reliability.get("stages", {}).get(stage_name, {}).get("evaluators", {}).items():
+            if entry.get("pass", 0) > 0 and entry.get("fail", 0) > 0:
+                unstable_evaluators.append({"stage": stage_name, "evaluator": key, "pass": entry["pass"], "fail": entry["fail"]})
+
+    return {
+        "available": True,
+        "method": reliability.get("method", {}),
+        "config": reliability.get("config", {}),
+        "stages": {
+            "baseline": reliability.get("stages", {}).get("baseline", {}).get("overall", {}),
+            "candidate": reliability.get("stages", {}).get("candidate", {}).get("overall", {}),
+        },
+        "comparison": comparison,
+        "flaky_cases": flaky_with_risk,
+        "unstable_evaluators": unstable_evaluators,
+        "dataset_health": reliability.get("dataset_health", {}),
+    }
+
+
 def _timeline(
     history_root: str | Path,
     manifests: dict[str, dict[str, Any]],
@@ -376,11 +445,12 @@ def build_dashboard(
         except DataError:
             continue
 
+    events = load_events(history_root)
     if candidate_run_id is not None and candidate_run_id not in manifests:
         dashboard_warnings.append(f"Selected candidate run {candidate_run_id} was not found; ignoring the selection")
         candidate_run_id = None
     if candidate_run_id is None:
-        candidate_run_id = _latest_unpromoted_candidate(manifests, champion_run_id)
+        candidate_run_id = _latest_unpromoted_candidate(manifests, events, champion_run_id)
 
     champion_manifest = manifests.get(champion_run_id) if champion_run_id else None
     anchor_manifest = manifests.get(anchor_run_id) if anchor_run_id else None
@@ -388,7 +458,6 @@ def build_dashboard(
 
     comparability = _comparability(history_root, champion_run_id, champion_manifest, candidate_run_id, candidate_manifest)
 
-    events = load_events(history_root)
     trend, slope, slope_reason = _trend_and_slope(manifests, events, anchor_run_id, champion_run_id, candidate_run_id, candidate_manifest)
 
     champion_level = (champion_manifest or {}).get("pass_rate")
@@ -428,6 +497,9 @@ def build_dashboard(
 
     regressions_block = _regressions(history_root, candidate_run_id, comparability["comparable"])
     regression_count = regressions_block["summary"].get("regressed") if regressions_block["summary"] else None
+    reliability_block = _reliability_block(history_root, candidate_run_id)
+    reliability_comparison = reliability_block.get("comparison", {}) if reliability_block.get("available") else {}
+    reliability_config = reliability_block.get("config", {}) if reliability_block.get("available") else {}
 
     kpis = {
         "champion_level": champion_level,
@@ -447,11 +519,17 @@ def build_dashboard(
         "regressions": regression_count,
         "manual_review": (candidate_manifest or {}).get("manual_review"),
         "champion_manual_review": (champion_manifest or {}).get("manual_review"),
+        "probability_of_improvement": reliability_comparison.get("probability_of_improvement"),
+        "probability_of_improvement_threshold": reliability_config.get("minimum_probability_of_improvement"),
+        "reliability_available": reliability_block.get("available", False),
     }
 
     coverage_run_id = candidate_run_id or champion_run_id or anchor_run_id
     coverage = _coverage(history_root, coverage_run_id)
-    evaluators = _evaluators_panel(history_root, champion_run_id, candidate_run_id)
+    evaluator_reference_run_id = comparability.get("cohort_anchor_run_id") or champion_run_id
+    evaluators = _evaluators_panel(
+        history_root, evaluator_reference_run_id, candidate_run_id, comparability["comparable"]
+    )
     timeline = _timeline(history_root, manifests, run_ids, events, champion_run_id)
 
     if not anchor_run_id:
@@ -468,6 +546,8 @@ def build_dashboard(
         pass
     elif delta_vs_anchor_reason and reference_manifest and anchor_manifest:
         dashboard_warnings.append(delta_vs_anchor_reason)
+    if candidate_run_id and not reliability_block.get("available"):
+        dashboard_warnings.append("One run only for the selected candidate — uncertainty unavailable")
 
     header = {
         "generated_at": when.isoformat(),
@@ -496,6 +576,7 @@ def build_dashboard(
         "evaluators": evaluators,
         "coverage": coverage,
         "regressions": regressions_block,
+        "reliability": reliability_block,
         "timeline": timeline,
         "warnings": dashboard_warnings,
         "integrity": integrity,

@@ -199,6 +199,15 @@ def _kpi_row(kpis: dict[str, Any]) -> str:
         _kpi("Candidate recommendation", _badge(kpis.get("candidate_recommendation")) or "N/A"),
         _kpi("Regressions", "N/A" if kpis.get("regressions") is None else str(kpis["regressions"])),
         _kpi("Manual review", "N/A" if kpis.get("manual_review") is None else str(kpis["manual_review"])),
+        _kpi(
+            "P(candidate > baseline)",
+            "N/A" if kpis.get("probability_of_improvement") is None else f"{kpis['probability_of_improvement']:.3f}",
+            (
+                f"threshold {float(kpis['probability_of_improvement_threshold']):.2f}"
+                if kpis.get("probability_of_improvement_threshold") is not None
+                else "one run only — uncertainty unavailable" if not kpis.get("reliability_available") else ""
+            ),
+        ),
     ]
     return f'<div class="kpis">{"".join(cards)}</div>'
 
@@ -239,7 +248,8 @@ def _evaluator_panel(evaluators: list[dict[str, Any]]) -> str:
         delta = "N/A" if row.get("delta") is None else f"{row['delta']:+.3f}"
         rows.append(
             "<tr>"
-            f"<td>{_esc(row.get('evaluator_id'))} <span class=\"sub\">({_esc(row.get('kind'))})</span></td>"
+            f"<td>{_esc(row.get('evaluator_id'))} "
+            f"<span class=\"sub\">v{_esc(row.get('evaluator_version'))} · {_esc(row.get('kind'))}</span></td>"
             f"<td>{champ}</td><td>{cand}</td>"
             f"<td class=\"{_delta_class(row.get('delta'))}\">{delta}</td>"
             f"<td>{row.get('pass', 0)}</td><td>{row.get('fail', 0)}</td><td>{row.get('error', 0)}</td>"
@@ -248,10 +258,92 @@ def _evaluator_panel(evaluators: list[dict[str, Any]]) -> str:
         )
     return (
         '<section class="panel"><h2>Evaluators</h2>'
-        "<table><thead><tr><th>Evaluator</th><th>Champion score</th><th>Candidate score</th><th>Delta</th>"
+        "<table><thead><tr><th>Evaluator</th><th>Comparable reference</th><th>Candidate score</th><th>Delta</th>"
         "<th>Pass</th><th>Fail</th><th>Error</th><th>N/A</th><th>Cases scored</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table></section>"
     )
+
+
+def _reliability_stage_row(label: str, overall: dict[str, Any]) -> str:
+    interval = overall.get("wilson_interval")
+    ci_text = "N/A" if not interval else f"[{interval[0] * 100:.1f}%, {interval[1] * 100:.1f}%]"
+    return (
+        "<tr>"
+        f"<td>{_esc(label)}</td>"
+        f"<td>{overall.get('pass', 0) + overall.get('fail', 0) + overall.get('manual_review', 0)}</td>"
+        f"<td>{_pct(overall.get('pass_rate'))}</td>"
+        f"<td>{ci_text}</td>"
+        f"<td>{overall.get('manual_review', 0)}</td>"
+        "</tr>"
+    )
+
+
+def _reliability_panel(reliability: dict[str, Any]) -> str:
+    if not reliability.get("available"):
+        reason = reliability.get("reason", "Not available")
+        return (
+            '<section class="panel"><h2>Reliability</h2>'
+            f'<p class="empty">One run only — uncertainty unavailable. {_esc(reason)}</p></section>'
+        )
+
+    method = reliability.get("method", {})
+    comparison = reliability.get("comparison", {})
+    config = reliability.get("config", {})
+    stages = reliability.get("stages", {})
+    bootstrap = comparison.get("bootstrap", {})
+    probability = comparison.get("probability_of_improvement")
+    threshold = config.get("minimum_probability_of_improvement")
+
+    stage_rows = _reliability_stage_row("Baseline", stages.get("baseline", {})) + _reliability_stage_row(
+        "Candidate", stages.get("candidate", {})
+    )
+
+    flaky = reliability.get("flaky_cases", [])
+    flaky_rows = "".join(
+        f"<tr><td>{_esc(item.get('case_id'))}</td><td>{_badge(item.get('risk'))}</td></tr>" for item in flaky
+    ) or '<tr><td colspan="2" class="empty">No flaky cases detected</td></tr>'
+
+    unstable = reliability.get("unstable_evaluators", [])
+    unstable_rows = "".join(
+        f"<tr><td>{_esc(item.get('stage'))}</td><td>{_esc(item.get('evaluator'))}</td>"
+        f"<td>{item.get('pass', 0)}</td><td>{item.get('fail', 0)}</td></tr>"
+        for item in unstable
+    ) or '<tr><td colspan="4" class="empty">No evaluator instability detected</td></tr>'
+
+    incompatible = comparison.get("incompatible_evaluators", [])
+    incompatible_html = "".join(
+        f"<li>{_esc(item.get('evaluator_id'))}: baseline v{_esc(','.join(item.get('baseline_versions', [])))} "
+        f"vs candidate v{_esc(','.join(item.get('candidate_versions', [])))} — not aggregated together</li>"
+        for item in incompatible
+    ) or "<li>None</li>"
+
+    health = reliability.get("dataset_health", {})
+    health_html = "".join(
+        f"<li>{_esc(label)}: {', '.join(_esc(case_id) for case_id in health.get(key, [])) or 'none'}</li>"
+        for label, key in (
+            ("Consistently easy", "consistently_easy"),
+            ("Consistently failing", "consistently_failing"),
+            ("Evaluator disagreement", "evaluator_disagreement"),
+            ("Low-observation tags", "low_observation_tags"),
+            ("Distinguishing cases", "distinguishing_cases"),
+        )
+    )
+
+    return f"""<section class="panel"><h2>Reliability</h2>
+<p class="sub">Method {_esc(method.get('version'))} &middot; confidence {_esc(method.get('confidence_level'))} &middot;
+{_esc(method.get('bootstrap_samples'))} bootstrap samples &middot; seed {_esc(method.get('seed'))}</p>
+<table><thead><tr><th>Stage</th><th>n</th><th>Pass rate</th><th>95% CI</th><th>Manual review</th></tr></thead>
+<tbody>{stage_rows}</tbody></table>
+<p><strong>Delta</strong>: {_pp_from_fraction(comparison.get('pass_rate_delta'))} &middot;
+bootstrap CI [{_pp_from_fraction(bootstrap.get('ci_low'))}, {_pp_from_fraction(bootstrap.get('ci_high'))}] &middot;
+P(candidate&gt;baseline) {"N/A" if probability is None else f"{probability:.3f}"}
+{f" (threshold {float(threshold):.2f})" if threshold is not None else ""}</p>
+<h3>Flaky cases</h3><table><tbody>{flaky_rows}</tbody></table>
+<h3>Evaluator instability</h3><table><thead><tr><th>Stage</th><th>Evaluator</th><th>Pass</th><th>Fail</th></tr></thead>
+<tbody>{unstable_rows}</tbody></table>
+<h3>Incompatible evaluator versions</h3><ul>{incompatible_html}</ul>
+<h3>Dataset health (advisory — never auto-applied)</h3><ul>{health_html}</ul>
+</section>"""
 
 
 def _distribution_table(title: str, counts: dict[str, int]) -> str:
@@ -359,6 +451,7 @@ def render_dashboard(dashboard: dict[str, Any], output_path: str | Path) -> Path
 {_progress_panel(dashboard.get("trend", []))}
 {_regression_panel(dashboard.get("regressions", {}))}
 {_evaluator_panel(dashboard.get("evaluators", []))}
+{_reliability_panel(dashboard.get("reliability", {}))}
 {_coverage_panel(dashboard.get("coverage", {}))}
 {_timeline_panel(dashboard.get("timeline", []))}
 <p class="sub">Generated locally from open AIK artifacts. No network request or remote asset is used.</p>

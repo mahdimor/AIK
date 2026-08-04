@@ -17,6 +17,93 @@ STATUS_LABELS = {
     "not_comparable": "Not comparable",
 }
 
+RISK_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+
+def _fmt_pct(value: float | None) -> str:
+    return "N/A" if value is None else f"{value * 100:.1f}%"
+
+
+def _fmt_ci(interval: list[float] | None) -> str:
+    if not interval:
+        return "N/A"
+    return f"[{interval[0] * 100:.1f}%, {interval[1] * 100:.1f}%]"
+
+
+def _fmt_pp(value: float | None) -> str:
+    if value is None:
+        return "N/A"
+    scaled = value * 100
+    sign = "+" if scaled >= 0 else ""
+    return f"{sign}{scaled:.1f}pp"
+
+
+def _reliability_panel(comparison: dict[str, Any], reliability: dict[str, Any] | None) -> str:
+    """Statistical reliability panel. Never fabricates a confidence interval or
+    probability when the underlying evidence does not support one."""
+    if reliability is None:
+        return (
+            '<div class="recommend reliability"><h3>Reliability: one run only</h3>'
+            "Statistical confidence is unavailable from a single observation. Run with "
+            "<code>--repetitions N</code>, then <code>aik evaluate --trials</code> and "
+            "<code>aik reliability</code>, to measure repeatability.</div>"
+        )
+
+    stages = reliability.get("stages", {})
+    comparison_stats = reliability.get("comparison", {})
+    config = reliability.get("config", {})
+    method = reliability.get("method", {})
+
+    def _stage_row(label: str, stage: dict[str, Any]) -> str:
+        overall = stage.get("overall", {})
+        return (
+            f'<div class="meta"><strong>{html.escape(label)}</strong> &middot; n={stage.get("observations", 0)} &middot; '
+            f'pass rate {_fmt_pct(overall.get("pass_rate"))} &middot; 95% CI {_fmt_ci(overall.get("wilson_interval"))}</div>'
+        )
+
+    probability = comparison_stats.get("probability_of_improvement")
+    threshold = config.get("minimum_probability_of_improvement")
+    bootstrap_ci = comparison_stats.get("bootstrap", {})
+    probability_text = "N/A" if probability is None else f"{probability:.3f}"
+    threshold_text = "" if threshold is None else f" (configured threshold {float(threshold):.2f})"
+
+    risk_map = {item["case_id"]: str(item.get("risk", "medium")) for item in comparison.get("items", [])}
+    flaky = sorted(comparison_stats.get("flaky_cases", []), key=lambda case_id: (RISK_ORDER.get(risk_map.get(case_id, "medium"), 2), case_id))
+    flaky_html = "".join(
+        f'<li>{html.escape(case_id)} <span class="sub">({html.escape(risk_map.get(case_id, "medium"))} risk)</span></li>' for case_id in flaky
+    ) or "<li>No flaky cases detected</li>"
+
+    incompatible = comparison_stats.get("incompatible_evaluators", [])
+    incompatible_html = "".join(
+        f'<li>{html.escape(str(item.get("evaluator_id")))}: baseline v{html.escape(",".join(item.get("baseline_versions", [])))} '
+        f'vs candidate v{html.escape(",".join(item.get("candidate_versions", [])))} — not aggregated together</li>'
+        for item in incompatible
+    ) or "<li>None</li>"
+
+    unstable: list[str] = []
+    for stage_name in ("baseline", "candidate"):
+        for key, entry in stages.get(stage_name, {}).get("evaluators", {}).items():
+            if entry.get("pass", 0) > 0 and entry.get("fail", 0) > 0:
+                unstable.append(f"{stage_name}: {key} ({entry['pass']} pass / {entry['fail']} fail across repetitions)")
+    unstable_html = "".join(f"<li>{html.escape(item)}</li>" for item in unstable) or "<li>None detected</li>"
+
+    statistical = (comparison.get("acceptance") or {}).get("statistical_reliability") or {}
+    reasons_text = "; ".join(str(reason) for reason in statistical.get("reasons", [])) or "No statistical reasons recorded"
+
+    return f"""<div class="recommend reliability"><h3>Reliability</h3>
+<div class="meta">Method {html.escape(str(method.get('version', 'N/A')))} &middot; confidence {html.escape(str(method.get('confidence_level', 'N/A')))} &middot;
+{html.escape(str(method.get('bootstrap_samples', 'N/A')))} bootstrap samples &middot; seed {html.escape(str(method.get('seed', 'N/A')))}</div>
+{_stage_row('Baseline', stages.get('baseline', {}))}
+{_stage_row('Candidate', stages.get('candidate', {}))}
+<div class="meta"><strong>Delta</strong> &middot; {_fmt_pp(comparison_stats.get('pass_rate_delta'))} &middot;
+bootstrap CI [{_fmt_pp(bootstrap_ci.get('ci_low'))}, {_fmt_pp(bootstrap_ci.get('ci_high'))}] &middot;
+P(candidate&gt;baseline) {html.escape(probability_text)}{html.escape(threshold_text)}</div>
+<div class="meta"><strong>Statistical recommendation</strong>: {html.escape(str(statistical.get('recommendation', 'N/A')))} — {html.escape(reasons_text)}</div>
+<div class="meta"><strong>Flaky cases</strong><ul>{flaky_html}</ul></div>
+<div class="meta"><strong>Evaluator instability</strong><ul>{unstable_html}</ul></div>
+<div class="meta"><strong>Incompatible evaluator versions</strong><ul>{incompatible_html}</ul></div>
+</div>"""
+
 
 def _simple_yaml_values(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
@@ -80,12 +167,18 @@ def _recommend(summary: dict[str, int], acceptance: dict[str, Any] | None = None
     return "NO MEASURABLE IMPROVEMENT", "No test changed from failing to passing. Review metric deltas and the value of the change."
 
 
-def render(comparison_path: str | Path, case_yaml_path: str | Path, output_path: str | Path) -> Path:
+def render(
+    comparison_path: str | Path,
+    case_yaml_path: str | Path,
+    output_path: str | Path,
+    reliability: dict[str, Any] | None = None,
+) -> Path:
     comparison = json.loads(Path(comparison_path).read_text(encoding="utf-8"))
     summary = comparison["summary"]
     case = _simple_yaml_values(Path(case_yaml_path))
     acceptance = comparison.get("acceptance")
     recommendation, reason = _recommend(summary, acceptance)
+    reliability_html = _reliability_panel(comparison, reliability)
     css_path = Path(__file__).resolve().parent.parent / "assets" / "review.css"
     css = css_path.read_text(encoding="utf-8")
 
@@ -120,6 +213,7 @@ def render(comparison_path: str | Path, case_yaml_path: str | Path, output_path:
 <strong>Change</strong><br>{html.escape(case.get('change', 'Not documented'))}</div>
 <div class="cards">{cards}</div>
 <div class="recommend"><h3>{recommendation}</h3>{html.escape(reason)}</div>
+{reliability_html}
 <h2>Case-by-case evidence</h2>{''.join(sections)}
 <p class="sub">Generated from open AIK artifacts. A human decision is required before promotion or deployment.</p>
 </main></body></html>"""

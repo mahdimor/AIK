@@ -73,6 +73,46 @@ def index_by(records: Iterable[dict[str, Any]], key: str) -> dict[str, dict[str,
     return {str(record[key]): record for record in records}
 
 
+def select_cases(
+    cases: Iterable[dict[str, Any]],
+    selected_ids: set[str] | None,
+    selected_tags: set[str] | None,
+) -> list[dict[str, Any]]:
+    """Filter test cases by explicit ID and/or tag, matching the CLI --id/--tag contract."""
+    cases = list(cases)
+    known_ids = {case["id"] for case in cases}
+    unknown_ids = (selected_ids or set()) - known_ids
+    if unknown_ids:
+        raise DataError(f"Unknown selected case IDs: {', '.join(sorted(unknown_ids))}")
+    selected: list[dict[str, Any]] = []
+    for case in cases:
+        if selected_ids and case["id"] not in selected_ids:
+            continue
+        tags = set(case.get("tags", [])) if isinstance(case.get("tags"), list) else set()
+        if selected_tags and not (tags & selected_tags):
+            continue
+        selected.append(case)
+    if not selected:
+        raise DataError("No test cases matched the selected IDs and tags")
+    return selected
+
+
+def observation_id_for(case_id: str, repetition: int) -> str:
+    """Stable, human-readable observation identifier for one repeated execution."""
+    return f"{case_id}#{repetition}"
+
+
+def observation_sort_key(observation_id: str) -> tuple[str, int]:
+    """Sort key that orders observation IDs by (case_id, repetition) numerically."""
+    case_id, separator, repetition = observation_id.rpartition("#")
+    if not separator:
+        return observation_id, 0
+    try:
+        return case_id, int(repetition)
+    except ValueError:
+        return observation_id, 0
+
+
 def write_json(path: str | Path, data: Any) -> Path:
     file_path = Path(path)
     file_path.parent.mkdir(parents=True, exist_ok=True)

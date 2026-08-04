@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from common import DataError, fingerprint, index_by, read_jsonl, write_json
+from reliability import combine_recommendations, reliability_acceptance
 
 
 STATUSES = ("improved", "regressed", "unchanged", "not_comparable")
@@ -50,7 +51,12 @@ def _evaluation_errors(result: dict[str, Any] | None) -> list[str]:
     return [str(item.get("evaluator_id", "unknown")) for item in result["evaluations"] if isinstance(item, dict) and item.get("status") == "error"]
 
 
-def _acceptance_policy(items: list[dict[str, Any]], cases: dict[str, dict[str, Any]], policy: dict[str, Any]) -> dict[str, Any]:
+def _acceptance_policy(
+    items: list[dict[str, Any]],
+    cases: dict[str, dict[str, Any]],
+    policy: dict[str, Any],
+    reliability: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     reasons: list[str] = []
     manual_reasons: list[str] = []
     if policy.get("reject_on_evaluator_error", True):
@@ -96,15 +102,40 @@ def _acceptance_policy(items: list[dict[str, Any]], cases: dict[str, dict[str, A
         recommendation = "manual_review"
     else:
         recommendation = "eligible"
-    return {
+    result = {
         "recommendation": recommendation,
         "reasons": reasons or manual_reasons or ["All configured acceptance gates passed"],
         "metrics": {"baseline_pass_rate": baseline_rate, "candidate_pass_rate": candidate_rate, "delta": delta},
         "policy": policy,
     }
 
+    # A statistical result never overrides this deterministic policy: it can only
+    # confirm it or make it more conservative (see reliability.combine_recommendations).
+    if reliability is not None:
+        statistical = reliability_acceptance(reliability)
+        combined = combine_recommendations(recommendation, statistical["recommendation"])
+        result["deterministic_recommendation"] = recommendation
+        result["recommendation"] = combined
+        result["reasons"] = list(result["reasons"]) + list(statistical["reasons"])
+        result["statistical_reliability"] = {
+            "recommendation": statistical["recommendation"],
+            "reasons": statistical["reasons"],
+            "paired_cases": reliability["comparison"]["paired_cases"],
+            "probability_of_improvement": reliability["comparison"]["probability_of_improvement"],
+            "pass_rate_delta": reliability["comparison"]["pass_rate_delta"],
+            "bootstrap_ci": [reliability["comparison"]["bootstrap"]["ci_low"], reliability["comparison"]["bootstrap"]["ci_high"]],
+            "flaky_cases": reliability["comparison"]["flaky_cases"],
+        }
+    return result
 
-def compare(test_cases_path: str | Path, baseline_path: str | Path, candidate_path: str | Path, suite: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def compare(
+    test_cases_path: str | Path,
+    baseline_path: str | Path,
+    candidate_path: str | Path,
+    suite: dict[str, Any] | None = None,
+    reliability: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     cases = index_by(read_jsonl(test_cases_path, "id"), "id")
     baseline = index_by(read_jsonl(baseline_path, "case_id"), "case_id")
     candidate = index_by(read_jsonl(candidate_path, "case_id"), "case_id")
@@ -172,7 +203,7 @@ def compare(test_cases_path: str | Path, baseline_path: str | Path, candidate_pa
         compatibility_warnings.append("Baseline and candidate use different dataset fingerprints")
     if len(evaluator_fingerprints) > 1:
         compatibility_warnings.append("Baseline and candidate use different evaluator fingerprints")
-    acceptance = _acceptance_policy(items, cases, (suite or {}).get("acceptance", {}))
+    acceptance = _acceptance_policy(items, cases, (suite or {}).get("acceptance", {}), reliability)
     if compatibility_warnings:
         acceptance = {**acceptance, "recommendation": "manual_review", "reasons": compatibility_warnings}
     return {

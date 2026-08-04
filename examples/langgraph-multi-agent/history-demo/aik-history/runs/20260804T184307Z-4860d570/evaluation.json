@@ -1,0 +1,37 @@
+{
+  "format_version": "1.0",
+  "suite_id": "reliability-demo-suite",
+  "version": "1.0.0",
+  "evaluators": [
+    {
+      "id": "execution-ok",
+      "type": "no_execution_error",
+      "required": true
+    },
+    {
+      "id": "required-agents",
+      "type": "required_agents",
+      "required": true
+    },
+    {
+      "id": "forbidden-agents",
+      "type": "forbidden_agents",
+      "required": true
+    }
+  ],
+  "acceptance": {
+    "reject_on_evaluator_error": true,
+    "no_regression_at_or_above_risk": "high",
+    "critical_cases_must_pass": true,
+    "maximum_regressions": 0,
+    "minimum_candidate_pass_rate": 0.0,
+    "minimum_delta": 0.0
+  },
+  "reliability": {
+    "minimum_repetitions": 5,
+    "confidence_level": 0.95,
+    "bootstrap_samples": 5000,
+    "minimum_probability_of_improvement": 0.9,
+    "maximum_flaky_case_rate": 0.5
+  }
+}
