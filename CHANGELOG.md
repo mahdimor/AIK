@@ -7,6 +7,8 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 - Public-project documentation and contribution workflow.
 - Hardened statistical promotion gates and archived trial-evidence verification.
+- Added an offline visual tutorial, real report screenshots, a static showcase build,
+  portable dashboard paths, and a manually triggered GitHub Pages workflow.
 
 ## 0.5.0 — 2026-08-04
 

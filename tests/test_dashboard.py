@@ -100,6 +100,16 @@ class DashboardModelTests(DashboardTestBase):
         self.assertIn("No history has been recorded yet", text)
         self.assertIn("No detected regressions", text)
 
+    def test_dashboard_does_not_embed_absolute_history_path(self) -> None:
+        history_root = self.root / "aik-history"
+        case_dir = self._prepare_case("portable-root")
+        history_init(case_dir, history_root=history_root, stage="baseline", label="Anchor", agent_version="v1")
+
+        dashboard = build_dashboard(history_root)
+
+        self.assertEqual(dashboard["header"]["history_root"], "aik-history")
+        self.assertNotIn(str(self.root), dashboard["header"]["history_root"])
+
     def test_kpis_and_comparability_within_one_cohort(self) -> None:
         case_dir = self._prepare_case("dash-a")
         history_root = self.root / "aik-history"

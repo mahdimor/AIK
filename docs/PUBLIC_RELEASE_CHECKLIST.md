@@ -27,6 +27,8 @@ an instruction to publish automatically.
   and require the branch to be current before merging.
 - [ ] Enable Dependabot alerts and security updates.
 - [ ] Confirm GitHub Actions permissions are read-only by default.
+- [ ] Enable GitHub Pages with GitHub Actions as the source, then manually run
+  `Deploy showcase to GitHub Pages`; the workflow has no automatic publish trigger.
 - [ ] Decide whether Discussions are useful; do not enable them without a moderation
   plan.
 

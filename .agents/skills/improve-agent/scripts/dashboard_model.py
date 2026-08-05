@@ -36,6 +36,17 @@ def _run_dir(history_root: str | Path, run_id: str) -> Path:
     return Path(history_root).resolve() / "runs" / run_id
 
 
+def _portable_history_root(history_root: str | Path) -> str:
+    """Describe the history location without leaking a developer's absolute path."""
+    root = Path(history_root)
+    if not root.is_absolute():
+        return root.as_posix()
+    try:
+        return root.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return root.name or "aik-history"
+
+
 def _optional_json(path: Path) -> dict[str, Any] | None:
     return read_json(path) if path.exists() else None
 
@@ -551,7 +562,7 @@ def build_dashboard(
 
     header = {
         "generated_at": when.isoformat(),
-        "history_root": str(Path(history_root).resolve()),
+        "history_root": _portable_history_root(history_root),
         "anchor_run_id": anchor_run_id,
         "anchor_agent_version": (anchor_manifest or {}).get("agent_version"),
         "champion_run_id": champion_run_id,

@@ -55,6 +55,7 @@ python -m compileall -q aik.py .agents tests examples
 python -m unittest discover -s tests -v
 python aik.py validate examples/support-agent/confirmation-before-action
 python aik.py history validate --history-root examples/langgraph-multi-agent/history-demo/aik-history
+python scripts/build_showcase.py
 git diff --check
 ```
 

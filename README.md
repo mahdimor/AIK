@@ -21,6 +21,21 @@ decision, and promoted regression cases together as reviewable files. It complem
 observability and optimization tools; it does not replace production monitoring,
 real user feedback, or release ownership.
 
+![AIK visual tutorial showing the champion dashboard and review workflow](showcase/assets/screenshots/01-overview.png)
+
+## Visual tutorial
+
+Build the complete static tutorial from committed synthetic evidence:
+
+```bash
+python scripts/build_showcase.py
+python -m http.server 8000 --directory dist/showcase
+```
+
+Open `http://127.0.0.1:8000`. The tutorial links to a live standalone review and
+champion dashboard, makes no model or network call, and needs no API key. Read the
+[step-by-step tutorial](docs/TUTORIAL.md) or inspect the source under `showcase/`.
+
 ## Install
 
 AIK core is source-distributed and uses only the Python standard library:
@@ -234,6 +249,7 @@ python aik.py validate examples/support-agent/confirmation-before-action
 python aik.py history validate
 python aik.py dashboard
 python aik.py --version
+python scripts/build_showcase.py
 ```
 
 Before contributing, read [CONTRIBUTING.md](CONTRIBUTING.md). For usage questions,

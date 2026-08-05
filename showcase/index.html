@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A visual, offline-first tutorial for AIK — Agent Improvement Kit.">
+  <title>AIK — From agent failure to trusted improvement</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <nav><a class="brand" href="#top">AIK</a><a href="#workflow">Workflow</a><a href="#screens">Screens</a><a href="demo/review.html">Live review</a><a href="demo/history/dashboard.html">Live dashboard</a></nav>
+    <div class="hero-grid" id="top">
+      <div>
+        <p class="eyebrow">Agent Improvement Kit · experimental v0.5.0</p>
+        <h1>Turn an agent failure into evidence you can review.</h1>
+        <p class="lede">Capture the baseline, test the candidate on the same governed cases, expose regressions, measure repeatability, and keep the accepted fix as a permanent test.</p>
+        <div class="actions"><a class="button primary" href="demo/review.html">Open the review</a><a class="button" href="demo/history/dashboard.html">Open the dashboard</a></div>
+        <p class="note">Static, synthetic and offline. No cloud account, API key, database or model call is used by this showcase.</p>
+      </div>
+      <img class="hero-shot" src="assets/screenshots/05-history-dashboard.png" alt="AIK champion history dashboard with baseline, champion and candidate evidence.">
+    </div>
+  </header>
+
+  <main>
+    <section class="problem">
+      <p class="eyebrow">The problem</p>
+      <h2>A small agent change can fix one case and quietly break another.</h2>
+      <p>AIK keeps the dataset, evaluator configuration, baseline, candidate, acceptance rules, repeated trials and human decision together as portable files. It complements observability; it does not replace production monitoring or release ownership.</p>
+    </section>
+
+    <section id="workflow">
+      <p class="eyebrow">Ten-minute tutorial</p>
+      <h2>One evidence chain, six explicit steps.</h2>
+      <ol class="steps">
+        <li><span>01</span><div><strong>Reproduce</strong><p>Turn the failed behavior into stable, synthetic test cases.</p></div></li>
+        <li><span>02</span><div><strong>Govern</strong><p>Define expectations, evaluators and acceptance gates before the candidate run.</p></div></li>
+        <li><span>03</span><div><strong>Compare</strong><p>Run the same cases against baseline and candidate evidence.</p></div></li>
+        <li><span>04</span><div><strong>Review</strong><p>Inspect every improvement, regression, evaluator error and missing result.</p></div></li>
+        <li><span>05</span><div><strong>Repeat</strong><p>Use repeated trials to distinguish a stable gain from agent or judge noise.</p></div></li>
+        <li><span>06</span><div><strong>Promote</strong><p>After human acceptance, preserve the fix as history and permanent regression data.</p></div></li>
+      </ol>
+      <pre><code>python scripts/build_showcase.py
+python -m http.server 8000 --directory dist/showcase
+# open http://127.0.0.1:8000</code></pre>
+    </section>
+
+    <section id="screens">
+      <p class="eyebrow">What the reviewer sees</p>
+      <h2>Human-readable evidence, backed by inspectable files.</h2>
+      <div class="gallery">
+        <figure><a href="demo/review.html"><img src="assets/screenshots/02-before-after-review.png" alt="Before and after behavioral review summary."></a><figcaption><strong>Before/after decision.</strong> A policy recommendation and counts that never hide a regression behind an average.</figcaption></figure>
+        <figure><a href="demo/review.html"><img src="assets/screenshots/03-case-evidence.png" alt="Case-level baseline and candidate evidence."></a><figcaption><strong>Case evidence.</strong> Baseline and candidate agents, tools, contracts and evaluator results side by side.</figcaption></figure>
+        <figure><a href="demo/history/dashboard.html"><img src="assets/screenshots/04-reliability.png" alt="Repeated-trial reliability statistics."></a><figcaption><strong>Reliability.</strong> Repetitions, uncertainty, flaky cases and the probability threshold remain advisory and conservative.</figcaption></figure>
+        <figure><a href="demo/history/dashboard.html"><img src="assets/screenshots/05-history-dashboard.png" alt="Champion history and progression dashboard."></a><figcaption><strong>Progression.</strong> Fixed anchor, current champion, pending candidate and promotion history.</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="boundary">
+      <p class="eyebrow">Safety boundary</p>
+      <h2>Evidence is not automatic production approval.</h2>
+      <p>AIK can recommend <code>eligible</code>, <code>manual_review</code> or <code>rejected</code>. A statistical result cannot override deterministic rejection, and promotion still requires an explicit human decision.</p>
+    </section>
+  </main>
+
+  <footer><span>AIK · MIT licensed · Python 3.10+</span><a href="https://github.com/mahdimor/AIK">Source on GitHub</a></footer>
+</body>
+</html>

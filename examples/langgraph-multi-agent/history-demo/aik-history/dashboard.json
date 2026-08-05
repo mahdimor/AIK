@@ -1,9 +1,9 @@
 {
   "format_version": "1.0",
-  "generated_at": "2026-08-04T20:06:16.085086+00:00",
+  "generated_at": "2026-08-05T18:52:46.602533+00:00",
   "header": {
-    "generated_at": "2026-08-04T20:06:16.085086+00:00",
-    "history_root": "C:\\Dev\\improverskill\\AIK\\examples\\langgraph-multi-agent\\history-demo\\aik-history",
+    "generated_at": "2026-08-05T18:52:46.602533+00:00",
+    "history_root": "examples/langgraph-multi-agent/history-demo/aik-history",
     "anchor_run_id": "20260804T200552Z-dac8094c",
     "anchor_agent_version": "demo-v1",
     "champion_run_id": "20260804T200552Z-3608f8f6",
