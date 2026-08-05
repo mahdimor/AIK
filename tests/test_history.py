@@ -95,6 +95,15 @@ class HistoryTestBase(unittest.TestCase):
 
 
 class HistoryLifecycleTests(HistoryTestBase):
+    def test_history_run_ids_reject_path_traversal(self) -> None:
+        history_root = self.root / "aik-history"
+        outside = self.root / "manifest.json"
+        write_json(outside, {"secret": "must-not-be-read"})
+
+        with self.assertRaisesRegex(DataError, "Invalid history run id"):
+            load_manifest(history_root, "../..")
+        self.assertTrue(any("Invalid history run id" in item for item in verify_run_integrity(history_root, "../..")))
+
     def test_initialize_anchor_and_champion_together(self) -> None:
         case_dir = self._prepare_case("case-a")
         history_root = self.root / "aik-history"

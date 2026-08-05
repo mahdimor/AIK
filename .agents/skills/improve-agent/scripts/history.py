@@ -126,6 +126,16 @@ def _history_paths(history_root: str | Path) -> dict[str, Path]:
     }
 
 
+def _validated_run_dir(paths: dict[str, Path], run_id: str) -> Path:
+    """Resolve one immutable run without permitting traversal or symlink escapes."""
+    if not isinstance(run_id, str) or not _RUN_ID_PATTERN.fullmatch(run_id):
+        raise DataError(f"Invalid history run id: {run_id!r}")
+    run_dir = paths["runs"] / run_id
+    if run_dir.is_symlink():
+        raise DataError(f"Refusing symlinked history run: {run_id}")
+    return run_dir
+
+
 def load_state(history_root: str | Path) -> dict[str, Any] | None:
     paths = _history_paths(history_root)
     if not paths["state"].exists():
@@ -142,7 +152,7 @@ def load_events(history_root: str | Path) -> list[dict[str, Any]]:
 
 def load_manifest(history_root: str | Path, run_id: str) -> dict[str, Any]:
     paths = _history_paths(history_root)
-    manifest_path = paths["runs"] / run_id / "manifest.json"
+    manifest_path = _validated_run_dir(paths, run_id) / "manifest.json"
     if not manifest_path.exists():
         raise DataError(f"Unknown history run: {run_id}")
     return read_json(manifest_path)
@@ -152,7 +162,11 @@ def list_run_ids(history_root: str | Path) -> list[str]:
     paths = _history_paths(history_root)
     if not paths["runs"].exists():
         return []
-    return sorted(entry.name for entry in paths["runs"].iterdir() if entry.is_dir() and not entry.name.startswith(".tmp-"))
+    return sorted(
+        entry.name
+        for entry in paths["runs"].iterdir()
+        if entry.is_dir() and not entry.is_symlink() and _RUN_ID_PATTERN.fullmatch(entry.name)
+    )
 
 
 def _event_content(event: dict[str, Any]) -> dict[str, Any]:
@@ -489,7 +503,10 @@ def _archive_run(
 
 def verify_run_integrity(history_root: str | Path, run_id: str) -> list[str]:
     paths = _history_paths(history_root)
-    run_dir = paths["runs"] / run_id
+    try:
+        run_dir = _validated_run_dir(paths, run_id)
+    except DataError as exc:
+        return [str(exc)]
     manifest_path = run_dir / "manifest.json"
     if not manifest_path.exists():
         return [f"Missing manifest for run {run_id}"]
@@ -641,8 +658,11 @@ def _verify_candidate_comparison(
 ) -> list[str]:
     """Prove that a comparison used the archived candidate and active reference."""
     paths = _history_paths(history_root)
-    candidate_dir = paths["runs"] / candidate_run_id
-    reference_dir = paths["runs"] / reference_run_id
+    try:
+        candidate_dir = _validated_run_dir(paths, candidate_run_id)
+        reference_dir = _validated_run_dir(paths, reference_run_id)
+    except DataError as exc:
+        return [str(exc)]
     problems: list[str] = []
     try:
         comparison = read_json(candidate_dir / "comparison.json")

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 
-> **Project status:** experimental `v0.5.0`. AIK is usable for local evaluation
+> **Project status:** experimental `v0.5.1`. AIK is usable for local evaluation
 > workflows, but its statistical gates are supporting evidence—not a sole
 > production-release criterion. File formats and CLI details may change before
 > `v1.0`.

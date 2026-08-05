@@ -5,6 +5,8 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+## 0.5.1 — 2026-08-05
+
 - Public-project documentation and contribution workflow.
 - Hardened statistical promotion gates and archived trial-evidence verification.
 - Added an offline visual tutorial, real report screenshots, a static showcase build,
