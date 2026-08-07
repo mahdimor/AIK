@@ -117,6 +117,26 @@ unrepeatable candidate cannot become champion. Read
 `references/statistical-reliability.md` for the exact formulas, config schema, and
 promotion interaction.
 
+## Optimizer Feedback
+
+A prompt optimizer improves by reading why a case failed, so any case it sees stops
+measuring generalization. Export optimizer input only through:
+
+```bash
+python aik.py feedback improvements/<case-name> --stage candidate
+```
+
+This writes `feedback.json` with per-case diagnostic text for the optimizer-visible
+splits (`development`, `regression`, `challenge`) and **never** the `holdout` split —
+there is no flag to include it. The holdout appears only as a count and a content
+fingerprint. Every export appends to `optimizer-log.jsonl`, so the number of rounds
+run against a dataset stays visible, and a holdout changed mid-optimization is
+detected and reported as a warning. The command refuses to run on a legacy dataset,
+on a dataset with no holdout cases, or when a case is missing its `split`.
+
+AIK does not sandbox the optimizer: it makes the honest path the default and leaves
+an audit trail. Read `references/optimizer-feedback.md`.
+
 ## Evaluation Rules
 
 - Classify `failed -> passed` as `improved`.
@@ -134,6 +154,7 @@ promotion interaction.
 - Never deploy an agent or mutate a production system as part of this workflow.
 - Treat runner commands as project code with the current user's permissions. AIK does not sandbox them.
 - Never promote tests before a human explicitly accepts the candidate.
+- Never hand `holdout` cases, results, or reasons to a prompt optimizer. Use `aik feedback`.
 - Redact secrets and personal or internal identifiers before sharing artifacts.
 
 ## Minimum Deliverables

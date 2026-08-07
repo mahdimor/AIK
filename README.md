@@ -212,6 +212,28 @@ which runs a small suite through the real runner bridge with `--repetitions`, co
 run but is correctly withheld from promotion because the repeated trials do not meet
 the configured probability threshold.
 
+## Optimizer feedback and the sealed holdout
+
+A prompt optimizer improves by reading why a case failed, so any case it sees stops
+measuring generalization. Export optimizer input only through:
+
+```bash
+python aik.py feedback improvements/my-agent-failure --stage candidate
+```
+
+`feedback.json` carries per-case diagnostic text for the optimizer-visible splits
+(`development`, `regression`, `challenge`) and **never** the `holdout` split — there
+is no flag to include it, so there is no setting to get wrong under deadline. The
+holdout appears only as a count and a content fingerprint. Every export appends to
+`optimizer-log.jsonl`, keeping the number of optimization rounds visible, and a
+holdout quietly changed mid-optimization is detected and reported. The command
+refuses to run on a legacy dataset, on a dataset with no holdout cases, or when a
+case is missing its `split`.
+
+AIK does not sandbox the optimizer: it makes the honest path the default and leaves
+an audit trail. See
+[the optimizer feedback reference](.agents/skills/improve-agent/references/optimizer-feedback.md).
+
 ## What is tracked
 
 Every test case is classified as:

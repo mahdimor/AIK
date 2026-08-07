@@ -18,6 +18,7 @@ if str(SCRIPTS) not in sys.path:
 from common import DataError, write_json  # noqa: E402
 from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
+from export_feedback import export_feedback  # noqa: E402
 from init_case import initialize  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
@@ -96,6 +97,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     reliability_parser.add_argument("case_dir")
     reliability_parser.add_argument("--output", default=None, help="Alternate path for reliability.json")
+
+    feedback_parser = commands.add_parser(
+        "feedback",
+        help="Export optimizer-visible feedback; holdout cases are never included",
+    )
+    feedback_parser.add_argument("case_dir")
+    feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
 
     review_parser = commands.add_parser("review", help="Compare runs and build the HTML review")
     review_parser.add_argument("case_dir")
@@ -212,6 +221,16 @@ def main(argv: list[str] | None = None) -> int:
             print(" ".join(f"{key}={summary[key]}" for key in ("passed", "failed", "manual_review", "evaluator_errors")))
             print(f"results={summary['destination']}")
             return 1 if summary["evaluator_errors"] else 0
+
+        if args.command == "feedback":
+            report = export_feedback(args.case_dir, args.stage, args.output)
+            summary = report["summary"]
+            print(" ".join(f"{key}={summary[key]}" for key in sorted(summary)))
+            print(f"export_number={report['export_number']}")
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print(f"feedback={report['destination']}")
+            return 0
 
         if args.command in {"review", "demo"}:
             case_dir = args.case_dir

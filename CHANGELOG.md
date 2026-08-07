@@ -5,6 +5,17 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `aik feedback`, the optimizer-facing feedback export. It emits per-case
+  diagnostic text for the `development`, `regression` and `challenge` splits and never
+  the `holdout` split; there is no flag to include it.
+- The holdout is sealed rather than described: `feedback.json` records only its case
+  count and a content fingerprint.
+- Every export appends to `optimizer-log.jsonl`, so the number of optimization rounds
+  run against a dataset stays visible, and a holdout changed mid-optimization is
+  detected and reported as a warning.
+- `aik feedback` refuses to run on a legacy dataset, on a dataset with no holdout
+  cases, or when a case is missing its `split`.
+
 ## 0.5.1 — 2026-08-05
 
 - Public-project documentation and contribution workflow.
