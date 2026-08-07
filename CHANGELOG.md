@@ -5,6 +5,16 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `aik pareto`, a constrained quality/cost/latency Pareto front over evaluated
+  variants. Feasibility is decided first by the existing deterministic acceptance
+  policy plus optional absolute gates, so a cheap variant that fails a critical case
+  is rejected rather than ranked.
+- Added an optional `objectives` block to `evaluation.json` (`minimum_pass_rate`,
+  `maximum_cost_per_case_usd`, `maximum_latency_p95_ms`, `require_cost`,
+  `require_latency`), validated by `aik validate`.
+- Runner protocol 1.2: runners may report `cost` with a non-negative `total_usd` per
+  case. A case with no cost is unpriced, never free, and a variant with any unpriced
+  case is excluded from the ranking rather than ranked on an invented number.
 - Added `aik feedback`, the optimizer-facing feedback export. It emits per-case
   diagnostic text for the `development`, `regression` and `challenge` splits and never
   the `holdout` split; there is no flag to include it.

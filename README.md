@@ -212,6 +212,33 @@ which runs a small suite through the real runner bridge with `--repetitions`, co
 run but is correctly withheld from promotion because the repeated trials do not meet
 the configured probability threshold.
 
+## Cost, latency and the constrained Pareto front
+
+Quality alone cannot decide whether a task can move to a cheaper model. Rank
+evaluated variants on quality, cost and latency at once:
+
+```bash
+python aik.py pareto improvements/my-agent-failure \
+  --variant "gpt-4o=improvements/my-agent-failure/gpt-4o.evaluated.jsonl" \
+  --variant "mini=improvements/my-agent-failure/mini.evaluated.jsonl" \
+  --variant "mini-optimized=improvements/my-agent-failure/mini-optimized.evaluated.jsonl"
+```
+
+Feasibility is decided before anything is ranked. An unconstrained front happily
+surfaces a variant that is very cheap and fails a critical case, so every variant
+first clears the same deterministic acceptance policy the review uses, then the
+optional absolute gates in the `objectives` block of `evaluation.json`
+(`minimum_pass_rate`, `maximum_cost_per_case_usd`, `maximum_latency_p95_ms`). A
+`rejected` or `manual_review` variant never reaches the front.
+
+Runners report `cost.total_usd` per case (protocol 1.2); AIK measures
+`execution.duration_ms` itself. A case with no cost is unpriced, never free — a
+variant with any unpriced case is reported as `not_comparable` and excluded from the
+ranking instead of winning on a number nobody measured. Two variants that each win on
+a different objective both stay on the front: that trade-off is a human decision, and
+`cheapest_feasible` is a recommendation, not a migration. See
+[the objectives reference](.agents/skills/improve-agent/references/objectives-and-pareto.md).
+
 ## Optimizer feedback and the sealed holdout
 
 A prompt optimizer improves by reading why a case failed, so any case it sees stops

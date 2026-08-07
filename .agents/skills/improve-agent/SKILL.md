@@ -117,6 +117,32 @@ unrepeatable candidate cannot become champion. Read
 `references/statistical-reliability.md` for the exact formulas, config schema, and
 promotion interaction.
 
+## Objectives and the Constrained Pareto Front
+
+Quality alone cannot decide whether a task can move to a cheaper model. Rank
+evaluated variants on quality, cost and latency together:
+
+```bash
+python aik.py pareto improvements/<case-name> \
+  --variant "gpt-4o=improvements/<case-name>/gpt-4o.evaluated.jsonl" \
+  --variant "mini=improvements/<case-name>/mini.evaluated.jsonl"
+```
+
+Feasibility is decided before anything is ranked. Each variant first runs through the
+same deterministic acceptance policy the review uses, then through the optional
+absolute gates in the `objectives` block of `evaluation.json`
+(`minimum_pass_rate`, `maximum_cost_per_case_usd`, `maximum_latency_p95_ms`,
+`require_cost`, `require_latency`). A `rejected` or `manual_review` variant never
+reaches the front, however cheap it is — an unconstrained front would happily
+surface a variant that is very cheap and fails a critical case.
+
+`cost.total_usd` per case comes from the runner (protocol 1.2); AIK measures
+`execution.duration_ms` itself. A case with no cost is unpriced, never free: a variant
+with any unpriced case is `not_comparable` and is excluded from the ranking rather
+than ranked on an invented number. All variants must share one dataset fingerprint.
+`cheapest_feasible` is a recommendation for a reviewer, never an automatic migration.
+Read `references/objectives-and-pareto.md`.
+
 ## Optimizer Feedback
 
 A prompt optimizer improves by reading why a case failed, so any case it sees stops
@@ -155,6 +181,8 @@ an audit trail. Read `references/optimizer-feedback.md`.
 - Treat runner commands as project code with the current user's permissions. AIK does not sandbox them.
 - Never promote tests before a human explicitly accepts the candidate.
 - Never hand `holdout` cases, results, or reasons to a prompt optimizer. Use `aik feedback`.
+- Never treat an unpriced or untimed case as free or instant; it is unmeasured evidence.
+- Never rank a variant on the Pareto front before it clears the acceptance policy.
 - Redact secrets and personal or internal identifiers before sharing artifacts.
 
 ## Minimum Deliverables

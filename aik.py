@@ -20,6 +20,7 @@ from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
 from export_feedback import export_feedback  # noqa: E402
 from init_case import initialize  # noqa: E402
+from pareto import build_pareto, parse_variant  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
 from validate_case import validate  # noqa: E402
@@ -105,6 +106,22 @@ def build_parser() -> argparse.ArgumentParser:
     feedback_parser.add_argument("case_dir")
     feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
     feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
+
+    pareto_parser = commands.add_parser(
+        "pareto",
+        help="Rank evaluated variants on a constrained quality/cost/latency Pareto front",
+    )
+    pareto_parser.add_argument("case_dir")
+    pareto_parser.add_argument(
+        "--variant",
+        action="append",
+        dest="variants",
+        default=[],
+        metavar="NAME=PATH",
+        help="An evaluated run to rank; repeat for each variant",
+    )
+    pareto_parser.add_argument("--baseline", default=None, help="Reference run (default: baseline.evaluated.jsonl)")
+    pareto_parser.add_argument("--output", default=None, help="Alternate path for pareto.json")
 
     review_parser = commands.add_parser("review", help="Compare runs and build the HTML review")
     review_parser.add_argument("case_dir")
@@ -230,6 +247,28 @@ def main(argv: list[str] | None = None) -> int:
             for warning in report["warnings"]:
                 print(f"WARNING: {warning}")
             print(f"feedback={report['destination']}")
+            return 0
+
+        if args.command == "pareto":
+            report = build_pareto(
+                args.case_dir,
+                [parse_variant(item) for item in args.variants],
+                baseline=args.baseline,
+                output=args.output,
+            )
+            for entry in report["variants"]:
+                metrics = entry["metrics"]
+                print(
+                    f"{entry['name']:<20} {entry['status']:<15} "
+                    f"pass_rate={metrics['quality']['pass_rate']} "
+                    f"cost_per_case={metrics['cost']['per_case_usd']} "
+                    f"p95_ms={metrics['latency']['p95_ms']}"
+                )
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print(f"front={','.join(report['front']) or 'none'}")
+            print(f"cheapest_feasible={report['cheapest_feasible']}")
+            print(f"pareto={report['destination']}")
             return 0
 
         if args.command in {"review", "demo"}:

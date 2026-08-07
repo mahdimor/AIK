@@ -33,8 +33,10 @@ Store one case per line in `test_cases.jsonl`:
 `baseline.raw.jsonl` and `candidate.raw.jsonl` preserve agent evidence without requiring a verdict:
 
 ```json
-{"case_id":"stable-case-id","output":"...","agents":[],"tool_calls":[],"execution":{"duration_ms":120}}
+{"case_id":"stable-case-id","output":"...","agents":[],"tool_calls":[],"cost":{"total_usd":0.0021},"execution":{"duration_ms":120}}
 ```
+
+`cost` is optional and only the runner can report it; `execution.duration_ms` is measured by AIK. A case with no `cost` is unpriced, never free. Read `references/runner-protocol.md` and `references/objectives-and-pareto.md`.
 
 ## Evaluated run
 
