@@ -1,0 +1,21 @@
+name: refund-extraction
+created: 2026-08-07
+status: recorded
+problem: >
+  A one-line system prompt asks a small model to "extract the refund details".
+  It never produces the strict JSON the downstream policy engine needs, so every
+  case fails on the field contract.
+severity: high
+hypothesis: >
+  The prompt fails because it names neither the output schema nor the closed
+  vocabulary of reason codes. A reflective optimizer that reads the failures
+  should be able to write both.
+change: Replace prompts/system.md with a candidate proposed by GEPA.
+risks:
+  - >
+    The optimizer only sees the development split, so it can invent a plausible
+    reason code that is not the one the policy engine expects. The holdout is
+    what makes that visible.
+  - >
+    A longer prompt costs more per case. Rank the result on the Pareto front
+    rather than on quality alone.

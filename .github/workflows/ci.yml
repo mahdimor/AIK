@@ -30,6 +30,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Validate example
         run: python aik.py validate examples/support-agent/confirmation-before-action
+      - name: Validate optimization example
+        run: python aik.py validate examples/refund-extraction
       - name: Generate example review
         run: python aik.py demo
       - name: Build static showcase
@@ -72,5 +74,7 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Validate example
         run: python aik.py validate examples/support-agent/confirmation-before-action
+      - name: Validate optimization example
+        run: python aik.py validate examples/refund-extraction
       - name: Build static showcase
         run: python scripts/build_showcase.py

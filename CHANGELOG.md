@@ -5,6 +5,11 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `examples/refund-extraction`, a worked end-to-end optimization: holdout,
+  feedback export, GEPA proposal, re-measurement and a Pareto ranking. The evidence
+  from a real run is committed, so `validate`, `review`, `feedback` and `pareto` work
+  there with no API key, and a test suite keeps the README's numbers matching the
+  committed evidence. CI validates the example.
 - Ran the GEPA adapter end to end against gepa 0.1.4 and fixed what that surfaced: the
   runner now executes with the throwaway workspace as its working directory so it can
   read the candidate under test; `--case-dir` is required rather than read from the

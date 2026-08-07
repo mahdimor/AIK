@@ -352,6 +352,21 @@ Nothing is executed, evaluated or promoted by this command. Run the candidates
 through `aik run` and `aik evaluate`, then `aik pareto` or `aik review`, and let a
 human decide.
 
+[`examples/refund-extraction`](examples/refund-extraction/) walks the whole loop on a
+real task — seal a holdout, export feedback, let GEPA propose a prompt, re-measure,
+then rank it on cost as well as quality. A recorded run is committed, so `validate`,
+`review`, `feedback` and `pareto` work there with no API key:
+
+```text
+                development (optimizer saw these)   holdout (never seen)
+seed prompt     0/6                                 0/4
+GEPA candidate  6/6                                 3/4
+```
+
+The one remaining holdout failure is the lesson: the optimizer invented a plausible
+reason code it had no way to know, scored 100% on the split it optimized against, and
+only the holdout showed the gap.
+
 Any process that speaks the protocol qualifies — a local script, a binary, another
 language, a container job. `examples/optimizers/rule_optimizer.py` runs the loop
 offline with no key and no package;
@@ -379,7 +394,9 @@ aik.py                                  Single user-facing CLI
 .agents/skills/improve-agent/           Portable Agent Skill
 datasets/regression.jsonl               Permanent accepted tests
 aik-history/                            Immutable champion history and local dashboard (generated)
-examples/                               Anonymized working example
+examples/                               Anonymized working examples
+examples/refund-extraction/             Full optimization loop, with a recorded run
+examples/optimizers/                    Optimizer-protocol implementations
 tests/                                  Dependency-free test suite
 ```
 
