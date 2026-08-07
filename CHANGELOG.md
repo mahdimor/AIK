@@ -5,6 +5,17 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `aik judge`, a domain verdict on one case (or every case) built from the
+  evidence `aik evaluate` already produced. No evaluator runs and there is no second
+  evaluation engine: a new `judge` block in `evaluation.json` maps existing evaluators
+  onto weighted criteria, hard rules, abstention and a verdict vocabulary, validated
+  by `aik validate`.
+- A hard rule is not weighed against anything: one violation forces `reject`, and a
+  hard rule that could not be checked forces `insufficient_evidence` rather than
+  passing by default.
+- `confidence` is the share of criterion weight that produced a definite status —
+  coverage, not a probability of correctness. A criterion with no definite status is
+  excluded from the score rather than counted as zero.
 - Added `aik optimize` and optimizer protocol 1.0: AIK drives an external optimizer
   over one subprocess exchanging JSON, so no optimizer dependency enters the core.
   The feedback payload is built by `aik feedback` inside the command, so an optimizer

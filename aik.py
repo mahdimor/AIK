@@ -20,6 +20,7 @@ from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
 from export_feedback import export_feedback  # noqa: E402
 from init_case import initialize  # noqa: E402
+from judge import judge, render_yaml  # noqa: E402
 from optimize import optimize  # noqa: E402
 from pareto import build_pareto, parse_variant  # noqa: E402
 from promote_tests import promote  # noqa: E402
@@ -107,6 +108,15 @@ def build_parser() -> argparse.ArgumentParser:
     feedback_parser.add_argument("case_dir")
     feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
     feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
+
+    judge_parser = commands.add_parser(
+        "judge",
+        help="Produce a domain verdict for one case, or for every case",
+    )
+    judge_parser.add_argument("case_dir")
+    judge_parser.add_argument("--case-id", default=None, help="Judge a single case instead of all of them")
+    judge_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    judge_parser.add_argument("--output", default=None)
 
     optimize_parser = commands.add_parser(
         "optimize",
@@ -258,6 +268,22 @@ def main(argv: list[str] | None = None) -> int:
             for warning in report["warnings"]:
                 print(f"WARNING: {warning}")
             print(f"feedback={report['destination']}")
+            return 0
+
+        if args.command == "judge":
+            report = judge(args.case_dir, case_id=args.case_id, stage=args.stage, output=args.output)
+            if args.case_id:
+                print(render_yaml(report))
+            else:
+                for judgement in report["judgements"]:
+                    score = "N/A" if judgement["score"] is None else f"{judgement['score']:.3f}"
+                    print(
+                        f"{judgement['case_id']:<28} {judgement['verdict']:<22} "
+                        f"score={score} confidence={judgement['confidence']:.3f} "
+                        f"-> {judgement['recommended_action']}"
+                    )
+                print(" ".join(f"{key}={value}" for key, value in report["summary"].items()))
+            print(f"judgement={report['destination']}")
             return 0
 
         if args.command == "optimize":

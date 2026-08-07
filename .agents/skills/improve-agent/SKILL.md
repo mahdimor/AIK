@@ -117,6 +117,29 @@ unrepeatable candidate cannot become champion. Read
 `references/statistical-reliability.md` for the exact formulas, config schema, and
 promotion interaction.
 
+## Domain Verdict on One Case
+
+The rest of AIK judges a version. A business reviewer needs a verdict on one case:
+
+```bash
+python aik.py judge improvements/<case-name> --case-id dossier-4711
+python aik.py judge improvements/<case-name>            # every case
+```
+
+No evaluator runs here. `aik judge` reads evidence `aik evaluate` already produced
+and maps it onto the weighted criteria, hard rules and verdict vocabulary declared in
+a `judge` block of `evaluation.json` (`aik validate` checks it, including that every
+referenced evaluator exists).
+
+A hard rule is a policy limit, not a quality signal: one violation forces `reject`
+regardless of the score, and a hard rule that could not be checked forces
+`insufficient_evidence` rather than passing by default. `confidence` is the share of
+criterion weight that produced a definite status — coverage, not a probability that
+the verdict is right, and never a model's self-reported certainty. With abstention
+enabled, confidence below the floor yields `insufficient_evidence` instead of a guess.
+A criterion with no definite status is excluded from the score, not counted as zero.
+Read `references/domain-judge.md`.
+
 ## Objectives and the Constrained Pareto Front
 
 Quality alone cannot decide whether a task can move to a cheaper model. Rank

@@ -212,6 +212,45 @@ which runs a small suite through the real runner bridge with `--repetitions`, co
 run but is correctly withheld from promotion because the repeated trials do not meet
 the configured probability threshold.
 
+## A verdict on one case
+
+The rest of AIK judges a version: is this candidate better than the champion? A
+business reviewer needs the other object — a verdict on one dossier, the criteria
+that decided it, and what to do next.
+
+```bash
+python aik.py judge improvements/my-agent-failure --case-id dossier-4711
+```
+
+```yaml
+case_id: dossier-4711
+judge: refund-policy-judge@0.1.0
+verdict: escalate
+score: 0.7
+confidence: 1
+criteria:
+  policy_compliance: pass
+  evidence_quality: fail
+  consistency: pass
+critical_violations: []
+recommended_action: request_missing_evidence
+```
+
+No evaluator runs here: `aik judge` reads evidence `aik evaluate` already produced
+and maps it onto weighted criteria, hard rules and a verdict vocabulary declared in a
+`judge` block of `evaluation.json`.
+
+A hard rule is a policy limit, not a quality signal — a delay window, an amount
+ceiling, a mandatory approval. One violation forces `reject` whatever the score says,
+because weighing a legal limit against a rubric is how a system approves something it
+was never allowed to approve. A hard rule that could not be checked does not pass by
+default either; the verdict becomes `insufficient_evidence`.
+
+`confidence` is the share of criterion weight that produced a definite status —
+coverage, not a probability that the verdict is right, and never a model's
+self-reported certainty. See
+[the domain judge reference](.agents/skills/improve-agent/references/domain-judge.md).
+
 ## Cost, latency and the constrained Pareto front
 
 Quality alone cannot decide whether a task can move to a cheaper model. Rank
