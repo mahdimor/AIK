@@ -261,6 +261,35 @@ AIK does not sandbox the optimizer: it makes the honest path the default and lea
 an audit trail. See
 [the optimizer feedback reference](.agents/skills/improve-agent/references/optimizer-feedback.md).
 
+## Running an optimizer
+
+AIK does not optimize anything itself. It owns the two ends that must not be
+negotiable — what an optimizer may see, and what it may write back — and talks to
+whatever sits between them over one subprocess exchanging JSON:
+
+```bash
+python aik.py optimize improvements/my-agent-failure -- python path/to/my_optimizer.py
+```
+
+Declare an `optimization` block in `evaluation.json` naming the components an
+optimizer may rewrite and the candidate budget. AIK builds the feedback payload
+itself, so the holdout cannot reach the optimizer, and validates the response: no
+component that was not offered, no over-budget candidate list, no empty text.
+Candidates land as text under `optimization/candidates/` with a `proposal.json`.
+
+Nothing is executed, evaluated or promoted by this command. Run the candidates
+through `aik run` and `aik evaluate`, then `aik pareto` or `aik review`, and let a
+human decide.
+
+Any process that speaks the protocol qualifies — a local script, a binary, another
+language, a container job. `examples/optimizers/rule_optimizer.py` runs the loop
+offline with no key and no package;
+[`examples/optimizers/gepa_optimizer.py`](examples/optimizers/gepa_optimizer.py) is
+the optional [GEPA](https://github.com/gepa-ai/gepa) implementation (`pip install
+gepa`), whose scoring half runs the real AIK runner and evaluator suite in a
+throwaway copy of the case. See
+[the optimizer protocol](.agents/skills/improve-agent/references/optimizer-protocol.md).
+
 ## What is tracked
 
 Every test case is classified as:

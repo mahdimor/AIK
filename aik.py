@@ -20,6 +20,7 @@ from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
 from export_feedback import export_feedback  # noqa: E402
 from init_case import initialize  # noqa: E402
+from optimize import optimize  # noqa: E402
 from pareto import build_pareto, parse_variant  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
@@ -107,6 +108,16 @@ def build_parser() -> argparse.ArgumentParser:
     feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
     feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
 
+    optimize_parser = commands.add_parser(
+        "optimize",
+        help="Propose candidates with an external optimizer; the holdout is never sent",
+        epilog="Place the optimizer command after --, for example: -- python my_optimizer.py",
+    )
+    optimize_parser.add_argument("case_dir")
+    optimize_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    optimize_parser.add_argument("--timeout", type=float, default=900)
+    optimize_parser.add_argument("--overwrite", action="store_true")
+
     pareto_parser = commands.add_parser(
         "pareto",
         help="Rank evaluated variants on a constrained quality/cost/latency Pareto front",
@@ -185,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     raw_arguments = list(argv) if argv is not None else sys.argv[1:]
     runner_command: list[str] = []
-    if raw_arguments[:1] in (["run"], ["evaluate"]) and "--" in raw_arguments:
+    if raw_arguments[:1] in (["run"], ["evaluate"], ["optimize"]) and "--" in raw_arguments:
         separator = raw_arguments.index("--")
         runner_command = raw_arguments[separator + 1 :]
         raw_arguments = raw_arguments[:separator]
@@ -247,6 +258,20 @@ def main(argv: list[str] | None = None) -> int:
             for warning in report["warnings"]:
                 print(f"WARNING: {warning}")
             print(f"feedback={report['destination']}")
+            return 0
+
+        if args.command == "optimize":
+            proposal = optimize(
+                args.case_dir,
+                runner_command,
+                stage=args.stage,
+                timeout_seconds=args.timeout,
+                overwrite=args.overwrite,
+            )
+            print(f"candidates={len(proposal['candidates'])}")
+            for candidate in proposal["candidates"]:
+                print(f"{candidate['id']}: {', '.join(sorted(candidate['files'].values()))}")
+            print(f"proposal={proposal['destination']}")
             return 0
 
         if args.command == "pareto":

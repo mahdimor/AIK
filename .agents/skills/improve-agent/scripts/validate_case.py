@@ -10,6 +10,7 @@ from pathlib import Path
 from common import DataError, fingerprint, read_json, read_jsonl
 from evaluate_results import _validate_suite
 from objectives import validate_objectives_config
+from optimize import validate_optimization_config
 from reliability import resolve_config
 
 
@@ -71,6 +72,12 @@ def validate(case_dir: str | Path) -> tuple[list[str], list[str]]:
             validate_objectives_config(suite["objectives"])
         except DataError as exc:
             errors.append(f"evaluation.json 'objectives' section is invalid: {exc}")
+
+    if is_v2 and "optimization" in suite:
+        try:
+            validate_optimization_config(suite["optimization"])
+        except DataError as exc:
+            errors.append(f"evaluation.json 'optimization' section is invalid: {exc}")
 
     if not cases:
         errors.append("test_cases.jsonl has no test cases")

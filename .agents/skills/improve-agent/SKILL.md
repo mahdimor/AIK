@@ -163,6 +163,22 @@ on a dataset with no holdout cases, or when a case is missing its `split`.
 AIK does not sandbox the optimizer: it makes the honest path the default and leaves
 an audit trail. Read `references/optimizer-feedback.md`.
 
+To run an optimizer rather than export for one, declare an `optimization` block in
+`evaluation.json` (which components it may rewrite, and the candidate budget) and:
+
+```bash
+python aik.py optimize improvements/<case-name> -- python path/to/my_optimizer.py
+```
+
+AIK builds the feedback payload itself, so the holdout cannot reach the optimizer,
+and validates what comes back: no unknown component, no over-budget candidate list,
+no empty text. Candidates are written as text under `optimization/candidates/` with a
+`proposal.json`. Nothing is executed, evaluated or promoted by this command — run the
+candidates through `aik run`/`aik evaluate`, then `aik pareto` or `aik review`.
+`examples/optimizers/rule_optimizer.py` runs offline with no dependency;
+`examples/optimizers/gepa_optimizer.py` is the optional GEPA implementation. Read
+`references/optimizer-protocol.md`.
+
 ## Evaluation Rules
 
 - Classify `failed -> passed` as `improved`.

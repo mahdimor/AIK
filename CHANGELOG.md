@@ -5,6 +5,20 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `aik optimize` and optimizer protocol 1.0: AIK drives an external optimizer
+  over one subprocess exchanging JSON, so no optimizer dependency enters the core.
+  The feedback payload is built by `aik feedback` inside the command, so an optimizer
+  reached this way cannot be handed the holdout.
+- Added an optional `optimization` block to `evaluation.json` declaring which
+  components an optimizer may rewrite and the candidate budget, validated by
+  `aik validate`. Component paths may not escape the case directory.
+- `aik optimize` rejects a response that proposes an unknown component, exceeds the
+  candidate budget, reuses an id, or returns empty text. Candidates are written as
+  text with a `proposal.json`; nothing is executed, evaluated or promoted.
+- Added `examples/optimizers/rule_optimizer.py`, a dependency-free reference
+  implementation, and `examples/optimizers/gepa_optimizer.py`, an optional GEPA
+  implementation whose scoring half runs the real runner and evaluator suite in a
+  throwaway copy of the case. GEPA's search loop is not exercised in CI.
 - Added `aik pareto`, a constrained quality/cost/latency Pareto front over evaluated
   variants. Feasibility is decided first by the existing deterministic acceptance
   policy plus optional absolute gates, so a cheap variant that fails a critical case
