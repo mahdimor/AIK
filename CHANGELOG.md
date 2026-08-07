@@ -5,6 +5,15 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Added `aik agreement`: Cohen's kappa between the judge and expert decisions read
+  from `expert_decisions.jsonl`, with a deterministic seeded bootstrap interval.
+- It also computes every expert-vs-expert pair — the human ceiling — because a judge
+  cannot be more right than the humans are consistent, and reports which side of that
+  band the judge is on. With a single rater it says there is no ceiling rather than
+  implying the kappa stands alone.
+- Contested cases (experts disagree) and judge abstentions are excluded from kappa and
+  reported by id, with the coverage that remains. Kappa is `null` with a reason,
+  never `1.0`, when chance agreement is total.
 - Added `aik judge`, a domain verdict on one case (or every case) built from the
   evidence `aik evaluate` already produced. No evaluator runs and there is no second
   evaluation engine: a new `judge` block in `evaluation.json` maps existing evaluators

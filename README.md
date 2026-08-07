@@ -251,6 +251,38 @@ coverage, not a probability that the verdict is right, and never a model's
 self-reported certainty. See
 [the domain judge reference](.agents/skills/improve-agent/references/domain-judge.md).
 
+## Does the judge decide like your experts?
+
+```bash
+python aik.py agreement improvements/my-agent-failure
+```
+
+```text
+judge vs consensus           kappa=0.812 [0.641, 0.938]  agreement=0.910  n=45
+judge vs amina               kappa=0.789 [0.612, 0.921]  agreement=0.898  n=49
+amina vs luc                 kappa=0.835 [0.658, 0.951]  agreement=0.920  n=25
+NOTE: The judge (kappa 0.812) is inside the human band (experts agree with each
+other at 0.835 or better).
+```
+
+Raw agreement flatters any judge on skewed data: if 90% of dossiers are approvals, a
+judge that approves everything agrees 90% of the time and has learned nothing.
+Cohen's kappa subtracts chance agreement, so that judge scores 0.
+
+The number nobody reports is the second one — **how well the experts agree with each
+other**. That is the ceiling: a judge cannot be more right than the humans are
+consistent. A kappa of 0.72 is a failure if two experts agree at 0.95 and the end of
+the road if they agree at 0.70. `aik agreement` computes every expert pair and says
+which side of the band the judge is on; with a single rater it says there is no
+ceiling instead of implying the number stands alone.
+
+Contested cases are excluded and listed — experts disagreeing marks an ambiguous
+policy, not a wrong judge. Abstentions are excluded and reported with the remaining
+coverage, because a judge that abstains on everything hard scores well on what is
+left. Every kappa carries a deterministic seeded bootstrap interval, and is `null`
+with a reason rather than `1.0` when chance agreement is total. See
+[the agreement reference](.agents/skills/improve-agent/references/agreement.md).
+
 ## Cost, latency and the constrained Pareto front
 
 Quality alone cannot decide whether a task can move to a cheaper model. Rank

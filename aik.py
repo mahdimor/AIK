@@ -15,6 +15,7 @@ SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from agreement import measure_agreement, print_report  # noqa: E402
 from common import DataError, write_json  # noqa: E402
 from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
@@ -108,6 +109,16 @@ def build_parser() -> argparse.ArgumentParser:
     feedback_parser.add_argument("case_dir")
     feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
     feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
+
+    agreement_parser = commands.add_parser(
+        "agreement",
+        help="Measure judge/expert agreement with Cohen's kappa, against the human ceiling",
+    )
+    agreement_parser.add_argument("case_dir")
+    agreement_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    agreement_parser.add_argument("--decisions", default=None, help="Defaults to expert_decisions.jsonl")
+    agreement_parser.add_argument("--seed", type=int, default=1337)
+    agreement_parser.add_argument("--output", default=None)
 
     judge_parser = commands.add_parser(
         "judge",
@@ -268,6 +279,18 @@ def main(argv: list[str] | None = None) -> int:
             for warning in report["warnings"]:
                 print(f"WARNING: {warning}")
             print(f"feedback={report['destination']}")
+            return 0
+
+        if args.command == "agreement":
+            print_report(
+                measure_agreement(
+                    args.case_dir,
+                    stage=args.stage,
+                    decisions_path=args.decisions,
+                    seed=args.seed,
+                    output=args.output,
+                )
+            )
             return 0
 
         if args.command == "judge":

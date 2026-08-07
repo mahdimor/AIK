@@ -140,6 +140,27 @@ enabled, confidence below the floor yields `insufficient_evidence` instead of a 
 A criterion with no definite status is excluded from the score, not counted as zero.
 Read `references/domain-judge.md`.
 
+## Agreement With Experts
+
+```bash
+python aik.py agreement improvements/<case-name>
+```
+
+Reads `expert_decisions.jsonl` (one line per expert per case, using the judge
+vocabulary), judges every case fresh, and reports Cohen's kappa with a deterministic
+seeded bootstrap interval.
+
+Report the kappa **against the human ceiling**: `aik agreement` also computes every
+expert-vs-expert pair, because a judge cannot be more right than the humans are
+consistent. With a single rater there is no ceiling and the report says so rather
+than implying the number means something alone.
+
+Contested cases (experts disagree) are excluded and listed — they mark an ambiguous
+policy, not a wrong judge. Abstentions are excluded and reported with the remaining
+coverage, because a judge that abstains on everything hard scores well on what is
+left. Kappa is `null` with a reason, never `1.0`, when chance agreement is total.
+Read `references/agreement.md`.
+
 ## Objectives and the Constrained Pareto Front
 
 Quality alone cannot decide whether a task can move to a cheaper model. Rank
