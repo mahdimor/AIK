@@ -97,7 +97,31 @@ production through this command.
 
 - `examples/optimizers/rule_optimizer.py` — dependency-free reference. Not a good
   optimizer; it exists so the loop runs offline with no key and no package.
-- `examples/optimizers/gepa_optimizer.py` — GEPA. Optional, needs `pip install gepa`
-  and a reflection model. Its scoring half runs the real AIK runner and evaluator
-  suite in a throwaway copy of the case, so the case being optimized is never mutated
-  during the search. The search loop is not exercised in CI.
+- `examples/optimizers/gepa_optimizer.py` — GEPA. Optional, needs
+  `pip install gepa litellm` and a reflection model. Its scoring half runs the real
+  AIK runner and evaluator suite in a throwaway copy of the case, so the case being
+  optimized is never mutated during the search. The search loop is not exercised in
+  CI, but it has been run end to end against gepa 0.1.4.
+
+```bash
+python aik.py optimize improvements/my-case -- \
+  python examples/optimizers/gepa_optimizer.py \
+    --case-dir /abs/path/to/improvements/my-case \
+    --reflection-lm openai/gpt-4.1 \
+    --max-metric-calls 60 \
+    --runner python /abs/path/to/my_runner.py
+```
+
+Notes earned the hard way:
+
+- `--case-dir` is required rather than read from the payload. The protocol carries no
+  local path, because an optimizer running anywhere else could not use one.
+- Use **absolute paths** in `--runner`. During the search the runner's working
+  directory is the throwaway workspace, which is how it reads the candidate's
+  component files (`prompts/system.md` and friends) relative to its own cwd.
+- `reflection_lm` given as a string needs `litellm`; `pip install gepa` alone does not
+  pull it in.
+- GEPA catches its own reflection failures, logs "did not propose a new candidate",
+  spends the whole budget and returns the seed. That is indistinguishable from an
+  honest negative result, so the adapter fails loudly when the search finished with a
+  single candidate instead of reporting "no improvement".

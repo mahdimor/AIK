@@ -5,6 +5,18 @@ for release intent while remaining pre-`1.0`, where compatibility may still chan
 
 ## Unreleased
 
+- Ran the GEPA adapter end to end against gepa 0.1.4 and fixed what that surfaced: the
+  runner now executes with the throwaway workspace as its working directory so it can
+  read the candidate under test; `--case-dir` is required rather than read from the
+  payload, keeping local paths out of the protocol; adapter stdout is redirected to
+  stderr so progress output cannot corrupt the JSON response; both streams are forced
+  to UTF-8 because reflection logs break a cp1252 console; the reflective dataset now
+  carries the case input and expectation instead of only the case id; and
+  `propose_new_texts = None` is defined, which the protocol calls optional but gepa
+  reads unconditionally.
+- The adapter now fails loudly when GEPA spends its budget without ever proposing a
+  candidate. GEPA catches its own reflection failures and returns the seed, which is
+  indistinguishable from an honest negative result.
 - Added `aik agreement`: Cohen's kappa between the judge and expert decisions read
   from `expert_decisions.jsonl`, with a deterministic seeded bootstrap interval.
 - It also computes every expert-vs-expert pair — the human ceiling — because a judge
