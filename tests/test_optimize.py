@@ -108,6 +108,7 @@ class OptimizeTests(unittest.TestCase):
         self.assertEqual(case_ids, {"visible", "guarded"})
         self.assertNotIn("HOLDOUT SECRET", json.dumps(received))
         self.assertEqual(received["feedback"]["summary"]["withheld_holdout_cases"], 1)
+        self.assertNotEqual(received["feedback"]["dataset_fingerprint"], proposal["dataset_fingerprint"])
         # The proposal still records that a holdout existed and was sealed.
         self.assertEqual(proposal["holdout"]["count"], 1)
 

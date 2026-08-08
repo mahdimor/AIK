@@ -22,8 +22,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from common import DataError, read_json, write_json
-from export_feedback import LEDGER_NAME, _append_ledger, _read_ledger, export_feedback
+from common import DataError, fingerprint, read_json, read_jsonl, write_json
+from export_feedback import LEDGER_NAME, _append_ledger, _read_ledger, export_feedback, holdout_seal
 
 
 PROTOCOL_VERSION = "1.0"
@@ -172,6 +172,9 @@ def optimize(
     # The optimizer never chooses its own evidence: this call is the only source,
     # and it cannot emit the holdout.
     feedback = export_feedback(directory, stage=stage, record_export=False)
+    cases = read_jsonl(directory / "test_cases.jsonl", "id")
+    full_dataset_fingerprint = fingerprint(cases)
+    sealed_holdout = holdout_seal(cases)
 
     payload = {
         "protocol_version": PROTOCOL_VERSION,
@@ -236,8 +239,8 @@ def optimize(
         "case_dir": str(directory),
         "stage": stage,
         "command": list(command),
-        "dataset_fingerprint": feedback["dataset_fingerprint"],
-        "holdout": feedback["holdout"],
+        "dataset_fingerprint": full_dataset_fingerprint,
+        "holdout": {"count": sealed_holdout["count"], "fingerprint": sealed_holdout["fingerprint"]},
         "visible_cases": feedback["summary"]["visible_cases"],
         "budget": payload["budget"],
         "components": [{"id": item["id"], "path": item["path"]} for item in components],
@@ -257,8 +260,8 @@ def optimize(
             "kind": "optimize",
             "stage": stage,
             "visible_cases": feedback["summary"]["visible_cases"],
-            "dataset_fingerprint": feedback["dataset_fingerprint"],
-            "holdout": feedback["holdout"],
+            "dataset_fingerprint": full_dataset_fingerprint,
+            "holdout": {"count": sealed_holdout["count"], "fingerprint": sealed_holdout["fingerprint"]},
             "candidates": len(candidates),
         },
     )

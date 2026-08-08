@@ -17,9 +17,9 @@ It writes `feedback.json` and appends one line to `optimizer-log.jsonl`.
 
 - **The `holdout` split is never exported.** There is no flag to include it. The
   exclusion is structural, so there is no setting to get wrong under deadline.
-- **The holdout is identified but never described.** `feedback.json` records the
-  holdout's case count and a content fingerprint — no IDs, no results, no scores,
-  no reasons.
+- **The holdout is counted but never described.** `feedback.json` records only the
+  holdout's case count — no fingerprint, IDs, results, scores, or reasons. The
+  private local ledger retains the content seal used for change detection.
 - **Every export is counted.** `optimizer-log.jsonl` records each export with its
   timestamp, stage, visible-case count, dataset fingerprint and holdout seal.
   A holdout consulted after forty optimization rounds is worth less than one

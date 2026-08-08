@@ -11,6 +11,7 @@ comparison on price.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Iterable
 
 from common import DataError
@@ -20,7 +21,7 @@ def _positive_number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     number = float(value)
-    if number < 0 or number != number:  # negative or NaN
+    if number < 0 or not math.isfinite(number):
         return None
     return number
 

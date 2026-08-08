@@ -17,6 +17,7 @@ criteria reports 0.5, and that is all it claims.
 from __future__ import annotations
 
 import argparse
+import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -120,14 +121,61 @@ def _evaluation_index(result: dict[str, Any] | None) -> dict[str, dict[str, Any]
     evaluations = (result or {}).get("evaluations")
     if not isinstance(evaluations, list):
         return {}
-    return {
-        str(item["evaluator_id"]): item
-        for item in evaluations
-        if isinstance(item, dict) and item.get("evaluator_id")
-    }
+    indexed: dict[str, dict[str, Any]] = {}
+    for item in evaluations:
+        if not isinstance(item, dict) or not item.get("evaluator_id"):
+            continue
+        evaluator_id = str(item["evaluator_id"])
+        if evaluator_id in indexed:
+            indexed[evaluator_id] = {
+                "evaluator_id": evaluator_id,
+                "status": "error",
+                "reason": "Duplicate evaluator result",
+            }
+        else:
+            indexed[evaluator_id] = item
+    return indexed
 
 
-def _criterion_outcome(evaluator_ids: list[str], evaluations: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _validated_score(
+    evaluator_id: str,
+    evaluation: dict[str, Any],
+    evaluator_configs: dict[str, dict[str, Any]] | None,
+) -> tuple[str | None, float | None, str | None]:
+    status = evaluation.get("status")
+    if status in {"error", "not_applicable"}:
+        return None, None, f"{evaluator_id}: {status}"
+    if status not in {"pass", "fail"}:
+        return None, None, f"{evaluator_id}: unknown status {status!r}"
+
+    raw_score = evaluation.get("score")
+    if raw_score is None:
+        return status, 1.0 if status == "pass" else 0.0, None
+    if isinstance(raw_score, bool) or not isinstance(raw_score, (int, float)):
+        return None, None, f"{evaluator_id}: invalid score {raw_score!r}"
+    score = float(raw_score)
+    if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+        return None, None, f"{evaluator_id}: score must be finite and between 0 and 1"
+
+    evaluator_config = (evaluator_configs or {}).get(evaluator_id)
+    if evaluator_config is not None:
+        threshold = float(evaluator_config.get("threshold", 0.7))
+        expected_status = "pass" if score >= threshold else "fail"
+        if status != expected_status:
+            return (
+                None,
+                None,
+                f"{evaluator_id}: status {status!r} is inconsistent with score {score:g} "
+                f"and threshold {threshold:g}",
+            )
+    return status, score, None
+
+
+def _criterion_outcome(
+    evaluator_ids: list[str],
+    evaluations: dict[str, dict[str, Any]],
+    evaluator_configs: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     values: list[float] = []
     statuses: list[str] = []
     unmeasured: list[str] = []
@@ -136,21 +184,17 @@ def _criterion_outcome(evaluator_ids: list[str], evaluations: dict[str, dict[str
         if evaluation is None:
             unmeasured.append(f"{evaluator_id}: no result")
             continue
-        status = evaluation.get("status")
-        if status in {"error", "not_applicable"}:
-            unmeasured.append(f"{evaluator_id}: {status}")
+        status, score, issue = _validated_score(evaluator_id, evaluation, evaluator_configs)
+        if issue is not None:
+            unmeasured.append(issue)
             continue
-        if status not in {"pass", "fail"}:
-            unmeasured.append(f"{evaluator_id}: unknown status {status!r}")
-            continue
+        assert status is not None and score is not None
         statuses.append(status)
-        score = evaluation.get("score")
-        if isinstance(score, (int, float)) and not isinstance(score, bool):
-            values.append(float(score))
-        else:
-            values.append(1.0 if status == "pass" else 0.0)
+        values.append(score)
 
-    if not statuses:
+    # A criterion is an explicit set of evaluators. Partial evidence must reduce
+    # coverage instead of giving the available sibling the criterion's full weight.
+    if not statuses or unmeasured:
         return {"status": "unknown", "score": None, "measured": False, "unmeasured": unmeasured}
     if all(status == "pass" for status in statuses):
         status = "pass"
@@ -166,7 +210,12 @@ def _criterion_outcome(evaluator_ids: list[str], evaluations: dict[str, dict[str
     }
 
 
-def judge_case(case: dict[str, Any], result: dict[str, Any] | None, config: dict[str, Any]) -> dict[str, Any]:
+def judge_case(
+    case: dict[str, Any],
+    result: dict[str, Any] | None,
+    config: dict[str, Any],
+    evaluator_configs: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Produce one domain verdict from one evaluated case."""
     evaluations = _evaluation_index(result)
     criteria_config = config["criteria"]
@@ -178,7 +227,7 @@ def judge_case(case: dict[str, Any], result: dict[str, Any] | None, config: dict
     unmeasured: list[str] = []
     for name, criterion in criteria_config.items():
         weight = float(criterion.get("weight", 1))
-        outcome = _criterion_outcome(list(criterion["evaluators"]), evaluations)
+        outcome = _criterion_outcome(list(criterion["evaluators"]), evaluations, evaluator_configs)
         unmeasured.extend(f"{name}/{item}" for item in outcome["unmeasured"])
         if outcome["measured"]:
             measured_weight += weight
@@ -199,10 +248,14 @@ def judge_case(case: dict[str, Any], result: dict[str, Any] | None, config: dict
     unchecked_rules = []
     for evaluator_id in config.get("hard_rules", []):
         evaluation = evaluations.get(evaluator_id)
-        if evaluation is None or evaluation.get("status") in {"error", "not_applicable"}:
+        if evaluation is None:
             unchecked_rules.append(evaluator_id)
             continue
-        if evaluation.get("status") == "fail":
+        status, _score, issue = _validated_score(evaluator_id, evaluation, evaluator_configs)
+        if issue is not None or status is None:
+            unchecked_rules.append(evaluator_id)
+            continue
+        if status == "fail":
             critical_violations.append(
                 {"evaluator_id": evaluator_id, "reason": str(evaluation.get("reason", "")).strip()}
             )
@@ -216,6 +269,7 @@ def judge_case(case: dict[str, Any], result: dict[str, Any] | None, config: dict
 
     abstained = False
     abstention_reasons: list[str] = []
+    source_verdict = (result or {}).get("verdict")
     if critical_violations:
         # A hard rule is not weighed against anything: one violation decides.
         verdict = "reject"
@@ -223,6 +277,12 @@ def judge_case(case: dict[str, Any], result: dict[str, Any] | None, config: dict
         verdict = "insufficient_evidence"
         abstained = True
         abstention_reasons.append("Hard rule(s) could not be checked: " + ", ".join(sorted(unchecked_rules)))
+    elif source_verdict == "manual_review" or (
+        source_verdict is not None and source_verdict not in {"pass", "fail"}
+    ):
+        verdict = "insufficient_evidence"
+        abstained = True
+        abstention_reasons.append(f"Upstream evaluation verdict is {source_verdict!r}")
     elif score is None:
         verdict = "insufficient_evidence"
         abstained = True
@@ -309,6 +369,11 @@ def judge(
             "evaluation.json has no 'judge' section: declare the criteria, weights and "
             "hard rules before asking for a domain verdict"
         )
+    evaluator_configs = {
+        str(item["id"]): item
+        for item in suite.get("evaluators", [])
+        if isinstance(item, dict) and item.get("id")
+    }
     evaluator_ids = {
         str(item["id"]) for item in suite.get("evaluators", []) if isinstance(item, dict) and item.get("id")
     }
@@ -323,7 +388,9 @@ def judge(
     else:
         selected = cases
 
-    judgements = [judge_case(case, results.get(str(case["id"])), config) for case in selected]
+    judgements = [
+        judge_case(case, results.get(str(case["id"])), config, evaluator_configs) for case in selected
+    ]
     generated_at = datetime.now(timezone.utc).isoformat()
     for judgement in judgements:
         judgement["generated_at"] = generated_at

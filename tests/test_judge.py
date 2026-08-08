@@ -162,6 +162,56 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(judgement["criteria"]["evidence_quality"]["status"], "partial")
         self.assertEqual(judgement["criteria"]["evidence_quality"]["score"], 0.5)
 
+    def test_partial_required_evidence_cannot_become_approval(self) -> None:
+        config = json.loads(json.dumps(CONFIG))
+        config["criteria"]["evidence_quality"]["evaluators"] = ["proof-of-damage", "receipt-present"]
+        result = _result(
+            _evaluation("delay-window", "pass"),
+            _evaluation("proof-of-damage", "pass"),
+            _evaluation("receipt-present", "error", reason="judge unavailable"),
+            _evaluation("rationale-matches", "pass"),
+            _evaluation("amount-ceiling", "pass"),
+        )
+        result.update({"verdict": "manual_review", "passed": None})
+        judgement = judge_case(CASE, result, config)
+        self.assertEqual(judgement["criteria"]["evidence_quality"]["status"], "unknown")
+        self.assertEqual(judgement["verdict"], "insufficient_evidence")
+        self.assertTrue(judgement["abstained"])
+
+    def test_invalid_or_inconsistent_scores_fail_closed(self) -> None:
+        evaluator_configs = {
+            evaluator_id: {"id": evaluator_id, "threshold": 0.7}
+            for evaluator_id in ("delay-window", "proof-of-damage", "rationale-matches", "amount-ceiling")
+        }
+        for invalid_score in (True, float("nan"), float("inf"), 1.1):
+            with self.subTest(score=invalid_score):
+                judgement = judge_case(
+                    CASE,
+                    _result(
+                        _evaluation("delay-window", "pass", score=invalid_score),
+                        _evaluation("proof-of-damage", "pass"),
+                        _evaluation("rationale-matches", "pass"),
+                        _evaluation("amount-ceiling", "pass"),
+                    ),
+                    CONFIG,
+                    evaluator_configs,
+                )
+                self.assertEqual(judgement["verdict"], "insufficient_evidence")
+
+        judgement = judge_case(
+            CASE,
+            _result(
+                _evaluation("delay-window", "fail", score=1.0),
+                _evaluation("proof-of-damage", "pass"),
+                _evaluation("rationale-matches", "pass"),
+                _evaluation("amount-ceiling", "pass"),
+            ),
+            CONFIG,
+            evaluator_configs,
+        )
+        self.assertEqual(judgement["verdict"], "insufficient_evidence")
+        self.assertTrue(any("inconsistent" in item for item in judgement["unmeasured"]))
+
     def test_not_applicable_is_not_a_failure(self) -> None:
         judgement = judge_case(
             CASE,

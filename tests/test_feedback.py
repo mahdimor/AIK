@@ -75,6 +75,7 @@ class FeedbackTests(unittest.TestCase):
         self.assertEqual(report["holdout"]["count"], 1)
         # The seal identifies the holdout without describing any of it.
         self.assertNotIn("case_ids", report["holdout"])
+        self.assertNotIn("fingerprint", report["holdout"])
         self.assertNotIn("case-2", json.dumps(report))
 
     def test_refuses_a_dataset_without_holdout(self) -> None:
@@ -116,6 +117,13 @@ class FeedbackTests(unittest.TestCase):
         ledger = (case_dir / "optimizer-log.jsonl").read_text(encoding="utf-8").strip().splitlines()
         self.assertEqual(len(ledger), 2)
         self.assertEqual(json.loads(ledger[0])["holdout"]["count"], 1)
+
+    def test_malformed_ledger_fails_closed(self) -> None:
+        case_dir = self._write_case()
+        (case_dir / "optimizer-log.jsonl").write_text("{}\n", encoding="utf-8")
+        with self.assertRaises(DataError) as raised:
+            export_feedback(case_dir)
+        self.assertIn("missing its holdout fingerprint", str(raised.exception))
 
     def test_a_changed_holdout_is_detected(self) -> None:
         case_dir = self._write_case()

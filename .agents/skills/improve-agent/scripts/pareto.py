@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from common import DataError, read_json, read_jsonl, write_json
+from common import DataError, fingerprint, read_json, read_jsonl, write_json
 from compare_runs import compare
 from objectives import check_objective_gates, run_objectives, validate_objectives_config
 
@@ -68,12 +68,14 @@ def parse_variant(argument: str) -> tuple[str, str]:
 
 
 def _dataset_fingerprint(results: list[dict[str, Any]]) -> str | None:
-    seen = {
-        record["evaluation_metadata"]["dataset_fingerprint"]
-        for record in results
-        if isinstance(record.get("evaluation_metadata"), dict)
-        and record["evaluation_metadata"].get("dataset_fingerprint")
-    }
+    values: list[str] = []
+    for record in results:
+        metadata = record.get("evaluation_metadata")
+        value = metadata.get("dataset_fingerprint") if isinstance(metadata, dict) else None
+        if not isinstance(value, str) or not value:
+            return None
+        values.append(value)
+    seen = set(values)
     if len(seen) > 1:
         raise DataError("One variant mixes results from different dataset fingerprints")
     return next(iter(seen), None)
@@ -97,6 +99,9 @@ def build_pareto(
         raise DataError(f"Duplicate variant name(s): {', '.join(duplicates)}")
 
     test_cases_path = directory / "test_cases.jsonl"
+    test_cases = read_jsonl(test_cases_path, "id")
+    expected_case_ids = {str(case["id"]) for case in test_cases}
+    expected_fingerprint = fingerprint(test_cases)
     suite = read_json(directory / "evaluation.json") if (directory / "evaluation.json").exists() else {}
     objectives_config = validate_objectives_config(suite.get("objectives"))
 
@@ -108,6 +113,20 @@ def build_pareto(
             f"No baseline at {baseline_path}: feasibility uses the absolute objective gates only, "
             "so regressions against a reference run are not checked"
         )
+    baseline_blocking: list[str] = []
+    if has_baseline:
+        baseline_results = read_jsonl(baseline_path, "case_id")
+        baseline_case_ids = {str(record["case_id"]) for record in baseline_results}
+        if baseline_case_ids != expected_case_ids:
+            baseline_blocking.append("Baseline results do not cover exactly the declared case set")
+        baseline_metrics = run_objectives(baseline_results)
+        if not baseline_metrics["quality"]["complete"]:
+            baseline_blocking.append("Baseline has a non-comparable result")
+        baseline_fingerprint = _dataset_fingerprint(baseline_results)
+        if baseline_fingerprint is None:
+            baseline_blocking.append("Baseline dataset fingerprint is missing")
+        elif baseline_fingerprint != expected_fingerprint:
+            baseline_blocking.append("Baseline dataset fingerprint does not match the declared test cases")
 
     entries: list[dict[str, Any]] = []
     fingerprints: dict[str, str | None] = {}
@@ -119,9 +138,22 @@ def build_pareto(
         metrics = run_objectives(results)
         fingerprints[name] = _dataset_fingerprint(results)
 
-        blocking: list[str] = []
+        blocking: list[str] = list(baseline_blocking)
         review: list[str] = []
         acceptance: dict[str, Any] | None = None
+        actual_case_ids = {str(record["case_id"]) for record in results}
+        missing_case_ids = sorted(expected_case_ids - actual_case_ids)
+        unknown_case_ids = sorted(actual_case_ids - expected_case_ids)
+        if missing_case_ids:
+            blocking.append("Missing declared case(s): " + ", ".join(missing_case_ids))
+        if unknown_case_ids:
+            blocking.append("Unknown case(s) not declared by the dataset: " + ", ".join(unknown_case_ids))
+        if not metrics["quality"]["complete"]:
+            blocking.append("Every declared case must have a comparable boolean result")
+        if fingerprints[name] is None:
+            blocking.append("Dataset fingerprint is missing from one or more evaluated results")
+        elif fingerprints[name] != expected_fingerprint:
+            blocking.append("Evaluated dataset fingerprint does not match the declared test cases")
         if has_baseline:
             comparison = compare(test_cases_path, baseline_path, variant_path, suite)
             acceptance = comparison["acceptance"]

@@ -198,8 +198,8 @@ python aik.py feedback improvements/<case-name> --stage candidate
 
 This writes `feedback.json` with per-case diagnostic text for the optimizer-visible
 splits (`development`, `regression`, `challenge`) and **never** the `holdout` split —
-there is no flag to include it. The holdout appears only as a count and a content
-fingerprint. Every export appends to `optimizer-log.jsonl`, so the number of rounds
+there is no flag to include it. The holdout appears only as a count. Every export
+appends a private content seal to `optimizer-log.jsonl`, so the number of rounds
 run against a dataset stays visible, and a holdout changed mid-optimization is
 detected and reported as a warning. The command refuses to run on a legacy dataset,
 on a dataset with no holdout cases, or when a case is missing its `split`.

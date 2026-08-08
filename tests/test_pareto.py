@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from common import DataError, read_json, write_json, write_jsonl  # noqa: E402
+from common import DataError, fingerprint, read_json, write_json, write_jsonl  # noqa: E402
 from init_case import initialize  # noqa: E402
 from objectives import (  # noqa: E402
     case_cost_usd,
@@ -38,7 +38,13 @@ def _case(case_id: str, risk: str = "medium") -> dict:
     }
 
 
-def _result(case_id: str, passed: bool, cost: float | None, duration: float | None) -> dict:
+def _result(
+    case_id: str,
+    passed: bool,
+    cost: float | None,
+    duration: float | None,
+    dataset_fingerprint: str | None = None,
+) -> dict:
     record: dict = {
         "case_id": case_id,
         "passed": passed,
@@ -50,6 +56,8 @@ def _result(case_id: str, passed: bool, cost: float | None, duration: float | No
         record["cost"] = {"total_usd": cost}
     if duration is not None:
         record["execution"] = {"duration_ms": duration, "exit_code": 0}
+    if dataset_fingerprint is not None:
+        record["evaluation_metadata"] = {"dataset_fingerprint": dataset_fingerprint}
     return record
 
 
@@ -76,6 +84,7 @@ class ObjectiveMetricTests(unittest.TestCase):
     def test_negative_and_boolean_cost_is_rejected(self) -> None:
         self.assertIsNone(case_cost_usd({"cost": {"total_usd": -1}}))
         self.assertIsNone(case_cost_usd({"cost": {"total_usd": True}}))
+        self.assertIsNone(case_cost_usd({"cost": {"total_usd": float("inf")}}))
         self.assertIsNone(case_cost_usd({"cost": "0.01"}))
         self.assertEqual(case_cost_usd({"cost": {"total_usd": 0}}), 0.0)
 
@@ -116,7 +125,9 @@ class ParetoTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.case_dir = initialize("Cost Sweep", self.root / "improvements")
-        write_jsonl(self.case_dir / "test_cases.jsonl", [_case("a"), _case("b", "critical")])
+        self.cases = [_case("a"), _case("b", "critical")]
+        self.dataset_fingerprint = fingerprint(self.cases)
+        write_jsonl(self.case_dir / "test_cases.jsonl", self.cases)
         self._write_variant("baseline.evaluated.jsonl", [(True, 0.10, 500), (True, 0.10, 700)])
 
     def tearDown(self) -> None:
@@ -127,7 +138,7 @@ class ParetoTests(unittest.TestCase):
         write_jsonl(
             path,
             [
-                _result(case_id, passed, cost, duration)
+                _result(case_id, passed, cost, duration, self.dataset_fingerprint)
                 for case_id, (passed, cost, duration) in zip(("a", "b"), rows)
             ],
         )
@@ -161,6 +172,38 @@ class ParetoTests(unittest.TestCase):
         self.assertNotIn("dirt-cheap", report["front"])
         self.assertNotEqual(report["cheapest_feasible"], "dirt-cheap")
         self.assertTrue(any("critical" in reason.lower() for reason in entry["blocking_reasons"]))
+
+    def test_a_variant_omitting_a_declared_case_is_rejected(self) -> None:
+        truncated = self.case_dir / "truncated.evaluated.jsonl"
+        write_jsonl(truncated, [_result("a", True, 0.001, 10, self.dataset_fingerprint)])
+        report = build_pareto(self.case_dir, [("truncated", truncated)])
+        entry = report["variants"][0]
+        self.assertEqual(entry["status"], "rejected")
+        self.assertTrue(any("Missing declared case" in reason for reason in entry["blocking_reasons"]))
+        self.assertNotIn("truncated", report["front"])
+
+    def test_a_variant_without_dataset_provenance_is_rejected(self) -> None:
+        unsealed = self.case_dir / "unsealed.evaluated.jsonl"
+        write_jsonl(
+            unsealed,
+            [_result("a", True, 0.01, 100), _result("b", True, 0.01, 100)],
+        )
+        report = build_pareto(self.case_dir, [("unsealed", unsealed)])
+        entry = report["variants"][0]
+        self.assertEqual(entry["status"], "rejected")
+        self.assertTrue(any("fingerprint is missing" in reason for reason in entry["blocking_reasons"]))
+
+    def test_an_unsealed_baseline_blocks_ranking(self) -> None:
+        baseline = self.case_dir / "baseline.evaluated.jsonl"
+        write_jsonl(
+            baseline,
+            [_result("a", True, 0.1, 500), _result("b", True, 0.1, 700)],
+        )
+        candidate = self._write_variant("candidate.evaluated.jsonl", [(True, 0.01, 100), (True, 0.01, 100)])
+        report = build_pareto(self.case_dir, [("candidate", candidate)])
+        entry = report["variants"][0]
+        self.assertEqual(entry["status"], "rejected")
+        self.assertTrue(any("Baseline dataset fingerprint is missing" in reason for reason in entry["blocking_reasons"]))
 
     def test_absolute_objective_gate_rejects_a_variant(self) -> None:
         self._set_objectives({"maximum_latency_p95_ms": 100})

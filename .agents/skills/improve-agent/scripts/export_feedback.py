@@ -105,6 +105,8 @@ def case_feedback(case: dict[str, Any], result: dict[str, Any] | None) -> dict[s
 def _read_ledger(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
+    if path.is_symlink() or not path.is_file():
+        raise DataError(f"Refusing non-regular optimizer ledger: {path}")
     records: list[dict[str, Any]] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
@@ -114,13 +116,16 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
             record = json.loads(stripped)
         except json.JSONDecodeError as exc:
             raise DataError(f"Invalid JSON in {path}: {exc.msg}") from exc
-        if isinstance(record, dict):
-            records.append(record)
+        if not isinstance(record, dict):
+            raise DataError(f"Expected an object in optimizer ledger: {path}")
+        records.append(record)
     return records
 
 
 def _append_ledger(path: Path, record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and (path.is_symlink() or not path.is_file()):
+        raise DataError(f"Refusing non-regular optimizer ledger: {path}")
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True))
         handle.write("\n")
@@ -190,8 +195,11 @@ def export_feedback(
     previous = _read_ledger(ledger_path)
     warnings: list[str] = []
     if previous:
-        first_seal = previous[0].get("holdout", {}).get("fingerprint")
-        if first_seal and first_seal != seal["fingerprint"]:
+        first_holdout = previous[0].get("holdout")
+        first_seal = first_holdout.get("fingerprint") if isinstance(first_holdout, dict) else None
+        if not isinstance(first_seal, str) or not first_seal:
+            raise DataError("Optimizer ledger anchor is missing its holdout fingerprint")
+        if first_seal != seal["fingerprint"]:
             warnings.append(
                 "The holdout changed since the first optimizer export. Any generalization "
                 "claim measured against it is void; rebuild the holdout and restart."
@@ -209,7 +217,9 @@ def export_feedback(
         "stage": stage,
         "dataset_id": manifest.get("dataset_id"),
         "dataset_version": manifest.get("version"),
-        "dataset_fingerprint": fingerprint(cases),
+        # This artifact is optimizer-visible, so its digest covers only the same
+        # visible records. The full dataset and holdout seals stay in the local ledger.
+        "dataset_fingerprint": fingerprint(visible),
         "export_number": export_number,
         "visible_splits": list(OPTIMIZER_VISIBLE_SPLITS),
         "summary": {
@@ -218,8 +228,8 @@ def export_feedback(
             "visible_passed": sum(item["passed"] is True for item in items),
             "withheld_holdout_cases": seal["count"],
         },
-        # The holdout is identified but never described: no result, no score, no reason.
-        "holdout": {"count": seal["count"], "fingerprint": seal["fingerprint"]},
+        # The holdout is counted but never described or hashed into this visible artifact.
+        "holdout": {"count": seal["count"]},
         "warnings": warnings,
         "items": items,
     }

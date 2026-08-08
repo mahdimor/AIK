@@ -322,7 +322,7 @@ python aik.py feedback improvements/my-agent-failure --stage candidate
 `feedback.json` carries per-case diagnostic text for the optimizer-visible splits
 (`development`, `regression`, `challenge`) and **never** the `holdout` split — there
 is no flag to include it, so there is no setting to get wrong under deadline. The
-holdout appears only as a count and a content fingerprint. Every export appends to
+holdout appears only as a count. Every export appends a private content seal to
 `optimizer-log.jsonl`, keeping the number of optimization rounds visible, and a
 holdout quietly changed mid-optimization is detected and reported. The command
 refuses to run on a legacy dataset, on a dataset with no holdout cases, or when a
