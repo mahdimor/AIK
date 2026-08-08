@@ -117,6 +117,112 @@ unrepeatable candidate cannot become champion. Read
 `references/statistical-reliability.md` for the exact formulas, config schema, and
 promotion interaction.
 
+## Domain Verdict on One Case
+
+The rest of AIK judges a version. A business reviewer needs a verdict on one case:
+
+```bash
+python aik.py judge improvements/<case-name> --case-id dossier-4711
+python aik.py judge improvements/<case-name>            # every case
+```
+
+No evaluator runs here. `aik judge` reads evidence `aik evaluate` already produced
+and maps it onto the weighted criteria, hard rules and verdict vocabulary declared in
+a `judge` block of `evaluation.json` (`aik validate` checks it, including that every
+referenced evaluator exists).
+
+A hard rule is a policy limit, not a quality signal: one violation forces `reject`
+regardless of the score, and a hard rule that could not be checked forces
+`insufficient_evidence` rather than passing by default. `confidence` is the share of
+criterion weight that produced a definite status — coverage, not a probability that
+the verdict is right, and never a model's self-reported certainty. With abstention
+enabled, confidence below the floor yields `insufficient_evidence` instead of a guess.
+A criterion with no definite status is excluded from the score, not counted as zero.
+Read `references/domain-judge.md`.
+
+## Agreement With Experts
+
+```bash
+python aik.py agreement improvements/<case-name>
+```
+
+Reads `expert_decisions.jsonl` (one line per expert per case, using the judge
+vocabulary), judges every case fresh, and reports Cohen's kappa with a deterministic
+seeded bootstrap interval.
+
+Report the kappa **against the human ceiling**: `aik agreement` also computes every
+expert-vs-expert pair, because a judge cannot be more right than the humans are
+consistent. With a single rater there is no ceiling and the report says so rather
+than implying the number means something alone.
+
+Contested cases (experts disagree) are excluded and listed — they mark an ambiguous
+policy, not a wrong judge. Abstentions are excluded and reported with the remaining
+coverage, because a judge that abstains on everything hard scores well on what is
+left. Kappa is `null` with a reason, never `1.0`, when chance agreement is total.
+Read `references/agreement.md`.
+
+## Objectives and the Constrained Pareto Front
+
+Quality alone cannot decide whether a task can move to a cheaper model. Rank
+evaluated variants on quality, cost and latency together:
+
+```bash
+python aik.py pareto improvements/<case-name> \
+  --variant "gpt-4o=improvements/<case-name>/gpt-4o.evaluated.jsonl" \
+  --variant "mini=improvements/<case-name>/mini.evaluated.jsonl"
+```
+
+Feasibility is decided before anything is ranked. Each variant first runs through the
+same deterministic acceptance policy the review uses, then through the optional
+absolute gates in the `objectives` block of `evaluation.json`
+(`minimum_pass_rate`, `maximum_cost_per_case_usd`, `maximum_latency_p95_ms`,
+`require_cost`, `require_latency`). A `rejected` or `manual_review` variant never
+reaches the front, however cheap it is — an unconstrained front would happily
+surface a variant that is very cheap and fails a critical case.
+
+`cost.total_usd` per case comes from the runner (protocol 1.2); AIK measures
+`execution.duration_ms` itself. A case with no cost is unpriced, never free: a variant
+with any unpriced case is `not_comparable` and is excluded from the ranking rather
+than ranked on an invented number. All variants must share one dataset fingerprint.
+`cheapest_feasible` is a recommendation for a reviewer, never an automatic migration.
+Read `references/objectives-and-pareto.md`.
+
+## Optimizer Feedback
+
+A prompt optimizer improves by reading why a case failed, so any case it sees stops
+measuring generalization. Export optimizer input only through:
+
+```bash
+python aik.py feedback improvements/<case-name> --stage candidate
+```
+
+This writes `feedback.json` with per-case diagnostic text for the optimizer-visible
+splits (`development`, `regression`, `challenge`) and **never** the `holdout` split —
+there is no flag to include it. The holdout appears only as a count. Every export
+appends a private content seal to `optimizer-log.jsonl`, so the number of rounds
+run against a dataset stays visible, and a holdout changed mid-optimization is
+detected and reported as a warning. The command refuses to run on a legacy dataset,
+on a dataset with no holdout cases, or when a case is missing its `split`.
+
+AIK does not sandbox the optimizer: it makes the honest path the default and leaves
+an audit trail. Read `references/optimizer-feedback.md`.
+
+To run an optimizer rather than export for one, declare an `optimization` block in
+`evaluation.json` (which components it may rewrite, and the candidate budget) and:
+
+```bash
+python aik.py optimize improvements/<case-name> -- python path/to/my_optimizer.py
+```
+
+AIK builds the feedback payload itself, so the holdout cannot reach the optimizer,
+and validates what comes back: no unknown component, no over-budget candidate list,
+no empty text. Candidates are written as text under `optimization/candidates/` with a
+`proposal.json`. Nothing is executed, evaluated or promoted by this command — run the
+candidates through `aik run`/`aik evaluate`, then `aik pareto` or `aik review`.
+`examples/optimizers/rule_optimizer.py` runs offline with no dependency;
+`examples/optimizers/gepa_optimizer.py` is the optional GEPA implementation. Read
+`references/optimizer-protocol.md`.
+
 ## Evaluation Rules
 
 - Classify `failed -> passed` as `improved`.
@@ -134,6 +240,9 @@ promotion interaction.
 - Never deploy an agent or mutate a production system as part of this workflow.
 - Treat runner commands as project code with the current user's permissions. AIK does not sandbox them.
 - Never promote tests before a human explicitly accepts the candidate.
+- Never hand `holdout` cases, results, or reasons to a prompt optimizer. Use `aik feedback`.
+- Never treat an unpriced or untimed case as free or instant; it is unmeasured evidence.
+- Never rank a variant on the Pareto front before it clears the acceptance policy.
 - Redact secrets and personal or internal identifiers before sharing artifacts.
 
 ## Minimum Deliverables

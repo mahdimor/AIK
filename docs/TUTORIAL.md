@@ -85,6 +85,15 @@ python scripts/build_showcase.py
 These scripts do not invoke LangGraph, an LLM or the network. The separate live
 LangGraph demo remains optional and has its own requirements file.
 
+## Next: optimizing a prompt end to end
+
+This tutorial covers comparing and tracking a change someone else made.
+[`examples/refund-extraction`](../examples/refund-extraction/) covers producing one:
+seal a holdout, export the failures an optimizer is allowed to see, let GEPA propose
+a prompt, re-measure including the holdout, and rank the result on cost as well as
+quality. Its recorded run is committed, so `validate`, `review`, `feedback` and
+`pareto` work there without an API key.
+
 ## What this tutorial does not claim
 
 - Statistical gates are supporting evidence, not the sole production-release rule.

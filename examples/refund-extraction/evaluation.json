@@ -1,0 +1,38 @@
+{
+  "format_version": "1.0",
+  "suite_id": "refund-extraction-evaluation",
+  "version": "1.0.0",
+  "evaluators": [
+    {
+      "id": "execution-ok",
+      "type": "no_execution_error",
+      "required": true
+    },
+    {
+      "id": "fields-present",
+      "type": "output_contains",
+      "required": true
+    }
+  ],
+  "acceptance": {
+    "reject_on_evaluator_error": true,
+    "no_regression_at_or_above_risk": "high",
+    "critical_cases_must_pass": true,
+    "maximum_regressions": 0,
+    "minimum_candidate_pass_rate": 0.0,
+    "minimum_delta": 0.0
+  },
+  "optimization": {
+    "components": [
+      {
+        "id": "system-prompt",
+        "path": "prompts/system.md"
+      }
+    ],
+    "max_candidates": 1
+  },
+  "objectives": {
+    "minimum_pass_rate": 0.8,
+    "require_cost": true
+  }
+}

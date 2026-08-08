@@ -1,0 +1,1404 @@
+{
+  "format_version": "1.0",
+  "generated_at": "2026-08-07T23:08:37.284654+00:00",
+  "inputs": {
+    "test_cases": "test_cases.jsonl",
+    "baseline": "baseline.evaluated.jsonl",
+    "candidate": "candidate.evaluated.jsonl"
+  },
+  "summary": {
+    "improved": 9,
+    "regressed": 0,
+    "unchanged": 1,
+    "not_comparable": 0,
+    "total": 10
+  },
+  "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+  "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+  "compatibility_warnings": [],
+  "acceptance": {
+    "recommendation": "eligible",
+    "reasons": [
+      "All configured acceptance gates passed"
+    ],
+    "metrics": {
+      "baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 0.9,
+      "delta": 0.9
+    },
+    "policy": {
+      "reject_on_evaluator_error": true,
+      "no_regression_at_or_above_risk": "high",
+      "critical_cases_must_pass": true,
+      "maximum_regressions": 0,
+      "minimum_candidate_pass_rate": 0.0,
+      "minimum_delta": 0.0
+    }
+  },
+  "items": [
+    {
+      "case_id": "r1",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r1",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 49,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 44,
+          "total_usd": 2.25e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"88213\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"88213\"', '\"reason_code\": \"damaged\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 2306,
+          "exit_code": 0
+        },
+        "output": "The customer has not provided specific refund details. They reported that the blue lamp they ordered on 3 March 2026, with order number 88213, arrived cracked, and they paid 74.90 EUR.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r1",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 733,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 8.13e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"88213\"",
+                "\"reason_code\": \"damaged\""
+              ],
+              "patterns": [
+                "\"order_id\": \"88213\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 748,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"88213\",\n  \"reason_code\": \"damaged\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r2",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r2",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 40,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 11,
+          "total_usd": 8.4e-06
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"4471\"",
+                "\"reason_code\": \"wrong_size\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"4471\"', '\"reason_code\": \"wrong_size\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 1050,
+          "exit_code": 0
+        },
+        "output": "Refund amount: $129 for order #4471.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r2",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 724,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 8.04e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"4471\"",
+                "\"reason_code\": \"wrong_size\""
+              ],
+              "patterns": [
+                "\"order_id\": \"4471\"",
+                "\"reason_code\": \"wrong_size\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 943,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"4471\",\n  \"reason_code\": \"wrong_size\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r3",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r3",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 40,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 15,
+          "total_usd": 1e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"99120\"",
+                "\"reason_code\": \"not_delivered\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"99120\"', '\"reason_code\": \"not_delivered\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 835,
+          "exit_code": 0
+        },
+        "output": "The refund amount is $45.00 USD for order 99120.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r3",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 724,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 21,
+          "total_usd": 8.08e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"99120\"",
+                "\"reason_code\": \"not_delivered\""
+              ],
+              "patterns": [
+                "\"order_id\": \"99120\"",
+                "\"reason_code\": \"not_delivered\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 819,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"99120\",\n  \"reason_code\": \"not_delivered\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r4",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r4",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 38,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 15,
+          "total_usd": 9.8e-06
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"71002\"",
+                "\"reason_code\": \"changed_mind\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"71002\"', '\"reason_code\": \"changed_mind\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 1062,
+          "exit_code": 0
+        },
+        "output": "Order number: 71002\nRefund amount: 23.50 EUR",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r4",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 722,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 21,
+          "total_usd": 8.06e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"71002\"",
+                "\"reason_code\": \"changed_mind\""
+              ],
+              "patterns": [
+                "\"order_id\": \"71002\"",
+                "\"reason_code\": \"changed_mind\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 927,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"71002\",\n  \"reason_code\": \"changed_mind\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r5",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r5",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 40,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 18,
+          "total_usd": 1.12e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"55031\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"55031\"', '\"reason_code\": \"damaged\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 842,
+          "exit_code": 0
+        },
+        "output": "The customer has not mentioned a refund request. They reported a safety issue with the blender.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r5",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 724,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 8.04e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"55031\"",
+                "\"reason_code\": \"damaged\""
+              ],
+              "patterns": [
+                "\"order_id\": \"55031\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 807,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"55031\",\n  \"reason_code\": \"damaged\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r6",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r6",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 45,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 14,
+          "total_usd": 1.01e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"30987\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"30987\"', '\"reason_code\": \"damaged\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 716,
+          "exit_code": 0
+        },
+        "output": "The refund amount for the ruined package is 62.25 GBP.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r6",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 729,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 8.09e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"30987\"",
+                "\"reason_code\": \"damaged\""
+              ],
+              "patterns": [
+                "\"order_id\": \"30987\"",
+                "\"reason_code\": \"damaged\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 738,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"30987\",\n  \"reason_code\": \"damaged\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r7",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "unchanged",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 0.0
+      },
+      "contract_changes": {},
+      "baseline": {
+        "case_id": "r7",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 40,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 16,
+          "total_usd": 1.04e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"12345\"",
+                "\"reason_code\": \"wrong_item\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"12345\"', '\"reason_code\": \"wrong_item\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 756,
+          "exit_code": 0
+        },
+        "output": "The refund amount is 39.99 EUR due to receiving the wrong color.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r7",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 724,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 8.04e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"12345\""
+              ],
+              "patterns": [
+                "\"order_id\": \"12345\"",
+                "\"reason_code\": \"wrong_item\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"reason_code\": \"wrong_item\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 762,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"12345\",\n  \"reason_code\": \"incorrect_item\"\n}",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      }
+    },
+    {
+      "case_id": "r8",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r8",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 41,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 15,
+          "total_usd": 1.01e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"66654\"",
+                "\"reason_code\": \"not_delivered\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"66654\"', '\"reason_code\": \"not_delivered\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 1270,
+          "exit_code": 0
+        },
+        "output": "The refund amount is 210.00 EUR for order 66654.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r8",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 725,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 21,
+          "total_usd": 8.09e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"66654\"",
+                "\"reason_code\": \"not_delivered\""
+              ],
+              "patterns": [
+                "\"order_id\": \"66654\"",
+                "\"reason_code\": \"not_delivered\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 815,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"66654\",\n  \"reason_code\": \"not_delivered\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r9",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r9",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 35,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 21,
+          "total_usd": 1.19e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"40118\"",
+                "\"reason_code\": \"wrong_size\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"40118\"', '\"reason_code\": \"wrong_size\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 873,
+          "exit_code": 0
+        },
+        "output": "The customer has requested a refund for the shoes purchased with order number 40118 for 95 EUR.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r9",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 719,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 20,
+          "total_usd": 7.99e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"40118\"",
+                "\"reason_code\": \"wrong_size\""
+              ],
+              "patterns": [
+                "\"order_id\": \"40118\"",
+                "\"reason_code\": \"wrong_size\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 756,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"40118\",\n  \"reason_code\": \"wrong_size\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    },
+    {
+      "case_id": "r10",
+      "description": "Extract reason_code and order_id from a refund request",
+      "tags": [
+        "extraction"
+      ],
+      "risk": "high",
+      "status": "improved",
+      "warnings": [],
+      "score_deltas": {
+        "execution-ok": 0.0,
+        "fields-present": 1.0
+      },
+      "contract_changes": {
+        "fields-present": {
+          "before": "fail",
+          "after": "pass"
+        }
+      },
+      "baseline": {
+        "case_id": "r10",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "fail"
+        },
+        "cost": {
+          "input_tokens": 38,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 15,
+          "total_usd": 9.8e-06
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [],
+              "patterns": [
+                "\"order_id\": \"77219\"",
+                "\"reason_code\": \"changed_mind\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract violations: ['\"order_id\": \"77219\"', '\"reason_code\": \"changed_mind\"']",
+            "score": 0.0,
+            "status": "fail"
+          }
+        ],
+        "execution": {
+          "duration_ms": 948,
+          "exit_code": 0
+        },
+        "output": "The refund amount is 15.00 EUR for order 77219.",
+        "passed": false,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 0.0
+        },
+        "verdict": "fail"
+      },
+      "candidate": {
+        "case_id": "r10",
+        "contracts": {
+          "execution-ok": "pass",
+          "fields-present": "pass"
+        },
+        "cost": {
+          "input_tokens": 722,
+          "model": "gpt-4.1-nano",
+          "output_tokens": 21,
+          "total_usd": 8.06e-05
+        },
+        "evaluation_metadata": {
+          "dataset_fingerprint": "sha256:0061211695d7b9772a8097557605cf8966ed0f08f44a22463f7f1dfdf5114344",
+          "evaluator_fingerprint": "sha256:09c0d03d22c94a3fc35eb78ef893fcc1ebe51f844ed63ff7ca114076407701a6",
+          "stage": "candidate"
+        },
+        "evaluations": [
+          {
+            "evaluator_id": "execution-ok",
+            "evaluator_version": "1",
+            "evidence": {
+              "error": null
+            },
+            "kind": "deterministic",
+            "reason": "Execution completed",
+            "score": 1.0,
+            "status": "pass"
+          },
+          {
+            "evaluator_id": "fields-present",
+            "evaluator_version": "1",
+            "evidence": {
+              "matched": [
+                "\"order_id\": \"77219\"",
+                "\"reason_code\": \"changed_mind\""
+              ],
+              "patterns": [
+                "\"order_id\": \"77219\"",
+                "\"reason_code\": \"changed_mind\""
+              ]
+            },
+            "kind": "deterministic",
+            "reason": "Text contract satisfied",
+            "score": 1.0,
+            "status": "pass"
+          }
+        ],
+        "execution": {
+          "duration_ms": 833,
+          "exit_code": 0
+        },
+        "output": "{\n  \"order_id\": \"77219\",\n  \"reason_code\": \"changed_mind\"\n}",
+        "passed": true,
+        "scores": {
+          "execution-ok": 1.0,
+          "fields-present": 1.0
+        },
+        "verdict": "pass"
+      }
+    }
+  ]
+}

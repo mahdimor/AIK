@@ -212,6 +212,170 @@ which runs a small suite through the real runner bridge with `--repetitions`, co
 run but is correctly withheld from promotion because the repeated trials do not meet
 the configured probability threshold.
 
+## A verdict on one case
+
+The rest of AIK judges a version: is this candidate better than the champion? A
+business reviewer needs the other object — a verdict on one dossier, the criteria
+that decided it, and what to do next.
+
+```bash
+python aik.py judge improvements/my-agent-failure --case-id dossier-4711
+```
+
+```yaml
+case_id: dossier-4711
+judge: refund-policy-judge@0.1.0
+verdict: escalate
+score: 0.7
+confidence: 1
+criteria:
+  policy_compliance: pass
+  evidence_quality: fail
+  consistency: pass
+critical_violations: []
+recommended_action: request_missing_evidence
+```
+
+No evaluator runs here: `aik judge` reads evidence `aik evaluate` already produced
+and maps it onto weighted criteria, hard rules and a verdict vocabulary declared in a
+`judge` block of `evaluation.json`.
+
+A hard rule is a policy limit, not a quality signal — a delay window, an amount
+ceiling, a mandatory approval. One violation forces `reject` whatever the score says,
+because weighing a legal limit against a rubric is how a system approves something it
+was never allowed to approve. A hard rule that could not be checked does not pass by
+default either; the verdict becomes `insufficient_evidence`.
+
+`confidence` is the share of criterion weight that produced a definite status —
+coverage, not a probability that the verdict is right, and never a model's
+self-reported certainty. See
+[the domain judge reference](.agents/skills/improve-agent/references/domain-judge.md).
+
+## Does the judge decide like your experts?
+
+```bash
+python aik.py agreement improvements/my-agent-failure
+```
+
+```text
+judge vs consensus           kappa=0.812 [0.641, 0.938]  agreement=0.910  n=45
+judge vs amina               kappa=0.789 [0.612, 0.921]  agreement=0.898  n=49
+amina vs luc                 kappa=0.835 [0.658, 0.951]  agreement=0.920  n=25
+NOTE: The judge (kappa 0.812) is inside the human band (experts agree with each
+other at 0.835 or better).
+```
+
+Raw agreement flatters any judge on skewed data: if 90% of dossiers are approvals, a
+judge that approves everything agrees 90% of the time and has learned nothing.
+Cohen's kappa subtracts chance agreement, so that judge scores 0.
+
+The number nobody reports is the second one — **how well the experts agree with each
+other**. That is the ceiling: a judge cannot be more right than the humans are
+consistent. A kappa of 0.72 is a failure if two experts agree at 0.95 and the end of
+the road if they agree at 0.70. `aik agreement` computes every expert pair and says
+which side of the band the judge is on; with a single rater it says there is no
+ceiling instead of implying the number stands alone.
+
+Contested cases are excluded and listed — experts disagreeing marks an ambiguous
+policy, not a wrong judge. Abstentions are excluded and reported with the remaining
+coverage, because a judge that abstains on everything hard scores well on what is
+left. Every kappa carries a deterministic seeded bootstrap interval, and is `null`
+with a reason rather than `1.0` when chance agreement is total. See
+[the agreement reference](.agents/skills/improve-agent/references/agreement.md).
+
+## Cost, latency and the constrained Pareto front
+
+Quality alone cannot decide whether a task can move to a cheaper model. Rank
+evaluated variants on quality, cost and latency at once:
+
+```bash
+python aik.py pareto improvements/my-agent-failure \
+  --variant "gpt-4o=improvements/my-agent-failure/gpt-4o.evaluated.jsonl" \
+  --variant "mini=improvements/my-agent-failure/mini.evaluated.jsonl" \
+  --variant "mini-optimized=improvements/my-agent-failure/mini-optimized.evaluated.jsonl"
+```
+
+Feasibility is decided before anything is ranked. An unconstrained front happily
+surfaces a variant that is very cheap and fails a critical case, so every variant
+first clears the same deterministic acceptance policy the review uses, then the
+optional absolute gates in the `objectives` block of `evaluation.json`
+(`minimum_pass_rate`, `maximum_cost_per_case_usd`, `maximum_latency_p95_ms`). A
+`rejected` or `manual_review` variant never reaches the front.
+
+Runners report `cost.total_usd` per case (protocol 1.2); AIK measures
+`execution.duration_ms` itself. A case with no cost is unpriced, never free — a
+variant with any unpriced case is reported as `not_comparable` and excluded from the
+ranking instead of winning on a number nobody measured. Two variants that each win on
+a different objective both stay on the front: that trade-off is a human decision, and
+`cheapest_feasible` is a recommendation, not a migration. See
+[the objectives reference](.agents/skills/improve-agent/references/objectives-and-pareto.md).
+
+## Optimizer feedback and the sealed holdout
+
+A prompt optimizer improves by reading why a case failed, so any case it sees stops
+measuring generalization. Export optimizer input only through:
+
+```bash
+python aik.py feedback improvements/my-agent-failure --stage candidate
+```
+
+`feedback.json` carries per-case diagnostic text for the optimizer-visible splits
+(`development`, `regression`, `challenge`) and **never** the `holdout` split — there
+is no flag to include it, so there is no setting to get wrong under deadline. The
+holdout appears only as a count. Every export appends a private content seal to
+`optimizer-log.jsonl`, keeping the number of optimization rounds visible, and a
+holdout quietly changed mid-optimization is detected and reported. The command
+refuses to run on a legacy dataset, on a dataset with no holdout cases, or when a
+case is missing its `split`.
+
+AIK does not sandbox the optimizer: it makes the honest path the default and leaves
+an audit trail. See
+[the optimizer feedback reference](.agents/skills/improve-agent/references/optimizer-feedback.md).
+
+## Running an optimizer
+
+AIK does not optimize anything itself. It owns the two ends that must not be
+negotiable — what an optimizer may see, and what it may write back — and talks to
+whatever sits between them over one subprocess exchanging JSON:
+
+```bash
+python aik.py optimize improvements/my-agent-failure -- python path/to/my_optimizer.py
+```
+
+Declare an `optimization` block in `evaluation.json` naming the components an
+optimizer may rewrite and the candidate budget. AIK builds the feedback payload
+itself, so the holdout cannot reach the optimizer, and validates the response: no
+component that was not offered, no over-budget candidate list, no empty text.
+Candidates land as text under `optimization/candidates/` with a `proposal.json`.
+
+Nothing is executed, evaluated or promoted by this command. Run the candidates
+through `aik run` and `aik evaluate`, then `aik pareto` or `aik review`, and let a
+human decide.
+
+[`examples/refund-extraction`](examples/refund-extraction/) walks the whole loop on a
+real task — seal a holdout, export feedback, let GEPA propose a prompt, re-measure,
+then rank it on cost as well as quality. A recorded run is committed, so `validate`,
+`review`, `feedback` and `pareto` work there with no API key:
+
+```text
+                development (optimizer saw these)   holdout (never seen)
+seed prompt     0/6                                 0/4
+GEPA candidate  6/6                                 3/4
+```
+
+The one remaining holdout failure is the lesson: the optimizer invented a plausible
+reason code it had no way to know, scored 100% on the split it optimized against, and
+only the holdout showed the gap.
+
+Any process that speaks the protocol qualifies — a local script, a binary, another
+language, a container job. `examples/optimizers/rule_optimizer.py` runs the loop
+offline with no key and no package;
+[`examples/optimizers/gepa_optimizer.py`](examples/optimizers/gepa_optimizer.py) is
+the optional [GEPA](https://github.com/gepa-ai/gepa) implementation (`pip install
+gepa`), whose scoring half runs the real AIK runner and evaluator suite in a
+throwaway copy of the case. See
+[the optimizer protocol](.agents/skills/improve-agent/references/optimizer-protocol.md).
+
 ## What is tracked
 
 Every test case is classified as:
@@ -230,7 +394,9 @@ aik.py                                  Single user-facing CLI
 .agents/skills/improve-agent/           Portable Agent Skill
 datasets/regression.jsonl               Permanent accepted tests
 aik-history/                            Immutable champion history and local dashboard (generated)
-examples/                               Anonymized working example
+examples/                               Anonymized working examples
+examples/refund-extraction/             Full optimization loop, with a recorded run
+examples/optimizers/                    Optimizer-protocol implementations
 tests/                                  Dependency-free test suite
 ```
 

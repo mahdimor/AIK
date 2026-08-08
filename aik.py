@@ -15,10 +15,15 @@ SCRIPTS = ROOT / ".agents" / "skills" / "improve-agent" / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from agreement import measure_agreement, print_report  # noqa: E402
 from common import DataError, write_json  # noqa: E402
 from execute_cases import execute  # noqa: E402
 from evaluate_results import evaluate, evaluate_trials  # noqa: E402
+from export_feedback import export_feedback  # noqa: E402
 from init_case import initialize  # noqa: E402
+from judge import judge, render_yaml  # noqa: E402
+from optimize import optimize  # noqa: E402
+from pareto import build_pareto, parse_variant  # noqa: E402
 from promote_tests import promote  # noqa: E402
 from run_review import run as build_review  # noqa: E402
 from validate_case import validate  # noqa: E402
@@ -97,6 +102,59 @@ def build_parser() -> argparse.ArgumentParser:
     reliability_parser.add_argument("case_dir")
     reliability_parser.add_argument("--output", default=None, help="Alternate path for reliability.json")
 
+    feedback_parser = commands.add_parser(
+        "feedback",
+        help="Export optimizer-visible feedback; holdout cases are never included",
+    )
+    feedback_parser.add_argument("case_dir")
+    feedback_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    feedback_parser.add_argument("--output", default=None, help="Alternate path for feedback.json")
+
+    agreement_parser = commands.add_parser(
+        "agreement",
+        help="Measure judge/expert agreement with Cohen's kappa, against the human ceiling",
+    )
+    agreement_parser.add_argument("case_dir")
+    agreement_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    agreement_parser.add_argument("--decisions", default=None, help="Defaults to expert_decisions.jsonl")
+    agreement_parser.add_argument("--seed", type=int, default=1337)
+    agreement_parser.add_argument("--output", default=None)
+
+    judge_parser = commands.add_parser(
+        "judge",
+        help="Produce a domain verdict for one case, or for every case",
+    )
+    judge_parser.add_argument("case_dir")
+    judge_parser.add_argument("--case-id", default=None, help="Judge a single case instead of all of them")
+    judge_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    judge_parser.add_argument("--output", default=None)
+
+    optimize_parser = commands.add_parser(
+        "optimize",
+        help="Propose candidates with an external optimizer; the holdout is never sent",
+        epilog="Place the optimizer command after --, for example: -- python my_optimizer.py",
+    )
+    optimize_parser.add_argument("case_dir")
+    optimize_parser.add_argument("--stage", default="candidate", choices=("baseline", "candidate"))
+    optimize_parser.add_argument("--timeout", type=float, default=900)
+    optimize_parser.add_argument("--overwrite", action="store_true")
+
+    pareto_parser = commands.add_parser(
+        "pareto",
+        help="Rank evaluated variants on a constrained quality/cost/latency Pareto front",
+    )
+    pareto_parser.add_argument("case_dir")
+    pareto_parser.add_argument(
+        "--variant",
+        action="append",
+        dest="variants",
+        default=[],
+        metavar="NAME=PATH",
+        help="An evaluated run to rank; repeat for each variant",
+    )
+    pareto_parser.add_argument("--baseline", default=None, help="Reference run (default: baseline.evaluated.jsonl)")
+    pareto_parser.add_argument("--output", default=None, help="Alternate path for pareto.json")
+
     review_parser = commands.add_parser("review", help="Compare runs and build the HTML review")
     review_parser.add_argument("case_dir")
 
@@ -159,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     raw_arguments = list(argv) if argv is not None else sys.argv[1:]
     runner_command: list[str] = []
-    if raw_arguments[:1] in (["run"], ["evaluate"]) and "--" in raw_arguments:
+    if raw_arguments[:1] in (["run"], ["evaluate"], ["optimize"]) and "--" in raw_arguments:
         separator = raw_arguments.index("--")
         runner_command = raw_arguments[separator + 1 :]
         raw_arguments = raw_arguments[:separator]
@@ -212,6 +270,80 @@ def main(argv: list[str] | None = None) -> int:
             print(" ".join(f"{key}={summary[key]}" for key in ("passed", "failed", "manual_review", "evaluator_errors")))
             print(f"results={summary['destination']}")
             return 1 if summary["evaluator_errors"] else 0
+
+        if args.command == "feedback":
+            report = export_feedback(args.case_dir, args.stage, args.output)
+            summary = report["summary"]
+            print(" ".join(f"{key}={summary[key]}" for key in sorted(summary)))
+            print(f"export_number={report['export_number']}")
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print(f"feedback={report['destination']}")
+            return 0
+
+        if args.command == "agreement":
+            print_report(
+                measure_agreement(
+                    args.case_dir,
+                    stage=args.stage,
+                    decisions_path=args.decisions,
+                    seed=args.seed,
+                    output=args.output,
+                )
+            )
+            return 0
+
+        if args.command == "judge":
+            report = judge(args.case_dir, case_id=args.case_id, stage=args.stage, output=args.output)
+            if args.case_id:
+                print(render_yaml(report))
+            else:
+                for judgement in report["judgements"]:
+                    score = "N/A" if judgement["score"] is None else f"{judgement['score']:.3f}"
+                    print(
+                        f"{judgement['case_id']:<28} {judgement['verdict']:<22} "
+                        f"score={score} confidence={judgement['confidence']:.3f} "
+                        f"-> {judgement['recommended_action']}"
+                    )
+                print(" ".join(f"{key}={value}" for key, value in report["summary"].items()))
+            print(f"judgement={report['destination']}")
+            return 0
+
+        if args.command == "optimize":
+            proposal = optimize(
+                args.case_dir,
+                runner_command,
+                stage=args.stage,
+                timeout_seconds=args.timeout,
+                overwrite=args.overwrite,
+            )
+            print(f"candidates={len(proposal['candidates'])}")
+            for candidate in proposal["candidates"]:
+                print(f"{candidate['id']}: {', '.join(sorted(candidate['files'].values()))}")
+            print(f"proposal={proposal['destination']}")
+            return 0
+
+        if args.command == "pareto":
+            report = build_pareto(
+                args.case_dir,
+                [parse_variant(item) for item in args.variants],
+                baseline=args.baseline,
+                output=args.output,
+            )
+            for entry in report["variants"]:
+                metrics = entry["metrics"]
+                print(
+                    f"{entry['name']:<20} {entry['status']:<15} "
+                    f"pass_rate={metrics['quality']['pass_rate']} "
+                    f"cost_per_case={metrics['cost']['per_case_usd']} "
+                    f"p95_ms={metrics['latency']['p95_ms']}"
+                )
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print(f"front={','.join(report['front']) or 'none'}")
+            print(f"cheapest_feasible={report['cheapest_feasible']}")
+            print(f"pareto={report['destination']}")
+            return 0
 
         if args.command in {"review", "demo"}:
             case_dir = args.case_dir
